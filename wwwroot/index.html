@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RecruiterAI — Plataforma de Reclutamiento Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --brand: #1a1a2e;
+  --accent: #e85d4a;
+  --accent-hover: #cf4835;
+  --surface: #ffffff;
+  --surface-2: #f7f6f3;
+  --surface-3: #eeede9;
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --text-primary: #1a1a2e;
+  --text-secondary: #5a5a72;
+  --text-muted: #9898a8;
+  --success: #1d9e75;
+  --success-bg: #e1f5ee;
+  --warning: #ba7517;
+  --warning-bg: #faeeda;
+  --danger: #a32d2d;
+  --danger-bg: #fcebeb;
+  --info: #185fa5;
+  --info-bg: #e6f1fb;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--surface-2); color: var(--text-primary); line-height: 1.6; min-height: 100vh; }
+
+/* HEADER */
+header { background: var(--brand); color: #fff; padding: 0 2rem; display: flex; align-items: center; gap: 1rem; height: 60px; position: sticky; top: 0; z-index: 100; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.logo-icon svg { width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 2; }
+.logo-text { font-family: 'DM Serif Display', serif; font-size: 1.2rem; color: #fff; }
+.logo-badge { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; background: var(--accent); color: #fff; padding: 2px 7px; border-radius: 4px; }
+header nav { margin-left: auto; display: flex; gap: 4px; }
+header nav button { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 0.82rem; font-family: inherit; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+header nav button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+header nav button.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 500; }
+
+/* LAYOUT */
+main { max-width: 1040px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.page-header { margin-bottom: 1.75rem; }
+.page-header h1 { font-family: 'DM Serif Display', serif; font-size: 1.85rem; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+.page-header p { font-size: 0.9rem; color: var(--text-secondary); }
+
+/* CARDS */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow); }
+.card + .card { margin-top: 1rem; }
+.card-title { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.85rem; }
+
+/* FORMS */
+label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.4rem; }
+textarea, input[type="text"], input[type="url"] { width: 100%; font-family: inherit; font-size: 0.875rem; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.7rem 0.9rem; color: var(--text-primary); resize: vertical; transition: border-color 0.15s, box-shadow 0.15s; outline: none; }
+textarea:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,93,74,0.1); }
+textarea { min-height: 100px; }
+.form-row { margin-bottom: 1rem; }
+.form-row:last-child { margin-bottom: 0; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 7px; font-family: inherit; font-size: 0.875rem; font-weight: 500; padding: 0.6rem 1.25rem; border-radius: var(--radius); cursor: pointer; transition: all 0.15s; border: none; white-space: nowrap; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border-strong); }
+.btn-secondary:hover { background: var(--surface-3); }
+.btn-sm { font-size: 0.78rem; padding: 0.4rem 0.85rem; }
+.btn-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; padding: 2px 4px; border-radius: 4px; transition: all 0.15s; }
+.btn-remove:hover { color: var(--danger); background: var(--danger-bg); }
+
+/* CANDIDATE ROW */
+.candidate-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; background: var(--surface-2); border-radius: var(--radius); margin-bottom: 0.5rem; }
+.candidate-row input[type="text"] { flex: 0 0 150px; min-height: unset; }
+.upload-mini { flex: 1; border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 0.55rem 0.75rem; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; background: var(--surface); text-align: center; position: relative; transition: border-color 0.15s; }
+.upload-mini:hover { border-color: var(--accent); color: var(--accent); }
+.upload-mini input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+/* LOADING / ERROR */
+.loading-state { display: none; align-items: center; gap: 0.75rem; padding: 1.25rem; background: var(--info-bg); border-radius: var(--radius); font-size: 0.875rem; color: var(--info); font-weight: 500; margin-top: 1rem; }
+.loading-state.visible { display: flex; }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(24,95,165,0.25); border-top-color: var(--info); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-state { display: none; padding: 1rem 1.25rem; background: var(--danger-bg); border-radius: var(--radius); font-size: 0.875rem; color: var(--danger); border-left: 3px solid var(--danger); margin-top: 1rem; }
+.error-state.visible { display: block; }
+
+/* RESULTS */
+.results-section { display: none; margin-top: 1.5rem; }
+.results-section.visible { display: block; }
+.results-title { font-family: 'DM Serif Display', serif; font-size: 1.2rem; margin-bottom: 1rem; }
+
+/* ── RANKING CARDS ── */
+.ranking-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.rank-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+.rank-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+.rank-card.rank-top { border-left: 3px solid var(--accent); }
+
+.rank-header {
+  display: grid;
+  grid-template-columns: 52px 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+}
+.rank-header:hover { background: var(--surface-2); }
+
+.score-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+.score-high { background: var(--success-bg); color: var(--success); }
+.score-mid { background: var(--warning-bg); color: var(--warning); }
+.score-low { background: var(--danger-bg); color: var(--danger); }
+
+.rank-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.2rem; }
+.rank-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.tag-strength { background: var(--success-bg); color: var(--success); }
+.tag-weakness { background: var(--danger-bg); color: var(--danger); }
+
+.verdict-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; padding: 5px 12px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+.verdict-avanzar { background: var(--success-bg); color: var(--success); }
+.verdict-revisar { background: var(--warning-bg); color: var(--warning); }
+.verdict-descartar { background: var(--danger-bg); color: var(--danger); }
+
+.chevron { color: var(--text-muted); font-size: 0.9rem; transition: transform 0.2s; flex-shrink: 0; }
+.rank-card.open .chevron { transform: rotate(180deg); }
+
+/* DETAIL PANEL */
+.rank-detail {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 1.25rem;
+  background: var(--surface-2);
+}
+.rank-card.open .rank-detail { display: block; }
+
+.detail-loading { display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: var(--info); padding: 1rem 0; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 680px) { .detail-grid { grid-template-columns: 1fr; } }
+
+.detail-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+.detail-section-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.detail-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-red { background: var(--danger); }
+.dot-blue { background: var(--info); }
+.dot-green { background: var(--success); }
+.dot-yellow { background: var(--warning); }
+
+/* FINDINGS */
+.finding-item { margin-bottom: 0.65rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--border); }
+.finding-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.finding-top { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.3rem; }
+.risk-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.risk-alto { background: var(--danger-bg); color: var(--danger); }
+.risk-medio { background: var(--warning-bg); color: var(--warning); }
+.risk-bajo { background: var(--info-bg); color: var(--info); }
+.finding-category { font-weight: 600; font-size: 0.8rem; }
+.finding-desc { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+.finding-q { font-size: 0.75rem; color: var(--text-secondary); font-style: italic; background: var(--surface-2); padding: 0.35rem 0.6rem; border-radius: 5px; border-left: 2px solid var(--border-strong); }
+.no-findings { font-size: 0.82rem; color: var(--success); display: flex; align-items: center; gap: 0.4rem; }
+
+/* QUESTIONS */
+.question-item { margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); position: relative; }
+.question-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.q-text { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.4rem; padding-right: 60px; line-height: 1.45; }
+.q-meta { font-size: 0.73rem; color: var(--text-secondary); background: var(--surface-2); padding: 0.3rem 0.5rem; border-radius: 5px; margin-bottom: 0.25rem; }
+.q-meta-label { font-weight: 600; color: var(--text-muted); }
+.copy-btn { position: absolute; top: 0; right: 0; background: none; border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; font-size: 0.68rem; cursor: pointer; color: var(--text-muted); font-family: inherit; transition: all 0.15s; }
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+.copy-btn.copied { border-color: var(--success); color: var(--success); }
+
+.questions-tabs { display: flex; gap: 4px; margin-bottom: 0.75rem; }
+.q-tab { font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; color: var(--text-muted); font-family: inherit; transition: all 0.15s; }
+.q-tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.q-panel { display: none; }
+.q-panel.active { display: block; }
+
+/* SUMMARY BOX */
+.summary-box { font-size: 0.8rem; color: var(--text-secondary); background: var(--surface-2); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.75rem; line-height: 1.6; }
+
+/* LINKEDIN TAB */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+.signal-item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; margin-bottom: 0.4rem; }
+.signal-item::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.signal-positive::before { background: var(--success); }
+.signal-negative::before { background: var(--danger); }
+.recommendation-card { border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.75rem; }
+.rec-contactar { background: var(--success-bg); border: 1px solid rgba(29,158,117,0.2); }
+.rec-evaluar { background: var(--warning-bg); border: 1px solid rgba(186,117,23,0.2); }
+.rec-no { background: var(--danger-bg); border: 1px solid rgba(163,45,45,0.2); }
+.rec-icon { font-size: 1.4rem; flex-shrink: 0; }
+.rec-verdict { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem; }
+.rec-reason { font-size: 0.82rem; color: var(--text-secondary); }
+.screening-q { display: flex; gap: 0.6rem; font-size: 0.82rem; background: var(--surface-2); border-radius: var(--radius); padding: 0.6rem 0.85rem; margin-bottom: 0.5rem; }
+.q-num { font-weight: 700; color: var(--accent); flex-shrink: 0; font-size: 0.78rem; }
+.alignment-badge { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; padding: 6px 14px; border-radius: 8px; }
+.align-alto { background: var(--success-bg); color: var(--success); }
+.align-medio { background: var(--warning-bg); color: var(--warning); }
+.align-bajo { background: var(--danger-bg); color: var(--danger); }
+
+/* FETCH URL */
+.url-row { display: flex; gap: 0.5rem; }
+.url-row input { flex: 1; }
+.fetch-status { font-size: 0.78rem; margin-top: 0.4rem; }
+
+/* TOAST */
+#toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--brand); color: #fff; padding: 0.65rem 1.1rem; border-radius: var(--radius); font-size: 0.82rem; font-weight: 500; opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; z-index: 999; }
+#toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <span class="logo-text">RecruiterAI</span>
+    <span class="logo-badge">BETA</span>
+  </a>
+  <nav>
+    <button class="active" onclick="switchTab('analisis')">Análisis de Candidatos</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ═══════════════════════════════════ TAB 1: ANÁLISIS UNIFICADO -->
+<div id="tab-analisis" class="tab-panel active">
+  <div class="page-header">
+    <h1>Análisis de Candidatos</h1>
+    <p>Cargá uno o varios CVs junto con la descripción del puesto. Obtenés el ranking completo y, al hacer click en cada candidato, el análisis detallado.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Descripción del puesto</div>
+    <div class="form-row">
+      <textarea id="job-desc" placeholder="Ej: Buscamos un Desarrollador Senior React con 5+ años de experiencia, conocimiento de TypeScript, GraphQL y AWS..."></textarea>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem;">
+    <div class="card-title">Candidatos</div>
+    <div id="candidates-list"></div>
+    <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" onclick="addCandidate()">+ Subir PDF</button>
+      <button class="btn btn-secondary btn-sm" onclick="addCandidateText()">+ Pegar texto</button>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem; display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+    <button class="btn btn-primary" onclick="runAnalysis()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Analizar Candidatos
+    </button>
+    <button class="btn btn-secondary" onclick="clearAll()">Limpiar</button>
+  </div>
+
+  <div id="analysis-loading" class="loading-state">
+    <div class="spinner"></div>
+    <span id="loading-text">Analizando candidatos...</span>
+  </div>
+  <div id="analysis-error" class="error-state"></div>
+
+  <div id="analysis-results" class="results-section">
+    <div class="results-title">Ranking de candidatos <span id="candidate-count" style="font-size:0.85rem; font-weight:400; color:var(--text-muted);"></span></div>
+    <div id="ranking-list" class="ranking-list"></div>
+  </div>
+</div>
+
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = '';
+const candidateFiles = {};
+let candidateCount = 0;
+// Cache de análisis detallados ya cargados
+const detailCache = {};
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+async function safeJson(resp) {
+  const text = await resp.text();
+  try { return JSON.parse(text); } catch { throw new Error(text || `HTTP ${resp.status}`); }
+}
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Error leyendo archivo'));
+    r.readAsDataURL(file);
+  });
+}
+function setLoading(prefix, show, msg) {
+  const el = $(prefix + '-loading');
+  el.classList.toggle('visible', show);
+  if (msg) { const t = $('loading-text'); if (t) t.textContent = msg; }
+}
+function setError(prefix, msg) {
+  const el = $(prefix + '-error');
+  el.textContent = msg;
+  el.classList.toggle('visible', !!msg);
+}
+function setResults(prefix, show) {
+  $(prefix + '-results').classList.toggle('visible', show);
+}
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓'; btn.classList.add('copied');
+    showToast('¡Copiado!');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── TAB NAV ────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('header nav button').forEach((b, i) => {
+    b.classList.toggle('active', ['analisis','linkedin'][i] === name);
+  });
+  $('tab-' + name).classList.add('active');
+}
+
+// ── CANDIDATES ─────────────────────────────────────────────────────────────
+function addCandidate(withText = false) {
+  candidateCount++;
+  const id = candidateCount;
+  const div = document.createElement('div');
+  div.id = 'cand-' + id;
+  div.className = 'candidate-row';
+  div.innerHTML = `
+    <input type="text" placeholder="Nombre del candidato" style="flex:0 0 180px;" id="cname-${id}" />
+    ${withText
+      ? `<textarea id="ctext-${id}" placeholder="Pegá el CV aquí..." style="flex:1;min-height:56px;font-size:0.78rem;"></textarea>`
+      : `<div class="upload-mini" id="cupload-${id}">
+           <input type="file" accept=".pdf" onchange="setCandFile(${id},this)" />
+           <span id="clabel-${id}">📎 Seleccionar PDF</span>
+         </div>`
+    }
+    <button class="btn-remove" onclick="removeCand(${id})">✕</button>
+  `;
+  $('candidates-list').appendChild(div);
+}
+function addCandidateText() { addCandidate(true); }
+function setCandFile(id, input) {
+  const f = input.files[0]; if (!f) return;
+  candidateFiles[id] = f;
+  $('clabel-' + id).textContent = '✓ ' + f.name;
+  $('clabel-' + id).style.color = 'var(--success)';
+}
+function removeCand(id) {
+  const el = $('cand-' + id); if (el) el.remove();
+  delete candidateFiles[id];
+}
+function clearAll() {
+  $('candidates-list').innerHTML = '';
+  $('job-desc').value = '';
+  Object.keys(candidateFiles).forEach(k => delete candidateFiles[k]);
+  setError('analysis', '');
+  setResults('analysis', false);
+  Object.keys(detailCache).forEach(k => delete detailCache[k]);
+  candidateCount = 0;
+  addCandidate(); addCandidate();
+}
+
+// ── MAIN ANALYSIS ──────────────────────────────────────────────────────────
+async function runAnalysis() {
+  const jobDesc = $('job-desc').value.trim();
+  if (!jobDesc) { setError('analysis', 'Ingresá la descripción del puesto.'); return; }
+
+  const rows = document.querySelectorAll('#candidates-list .candidate-row');
+  if (!rows.length) { setError('analysis', 'Agregá al menos un candidato.'); return; }
+
+  const candidates = [];
+  for (const row of rows) {
+    const id = row.id.replace('cand-', '');
+    const name = ($('cname-' + id)?.value || '').trim();
+    if (!name) { setError('analysis', 'Todos los candidatos deben tener nombre.'); return; }
+    const textEl = $('ctext-' + id);
+    if (textEl) {
+      if (!textEl.value.trim()) { setError('analysis', `"${name}" no tiene CV cargado.`); return; }
+      candidates.push({ name, text: textEl.value.trim(), pdfBase64: null });
+    } else if (candidateFiles[id]) {
+      const b64 = await toBase64(candidateFiles[id]);
+      candidates.push({ name, text: null, pdfBase64: b64 });
+    } else {
+      setError('analysis', `"${name}" no tiene CV cargado.`); return;
+    }
+  }
+
+  setError('analysis', '');
+  setResults('analysis', false);
+  setLoading('analysis', true, `Analizando ${candidates.length} candidato${candidates.length > 1 ? 's' : ''}...`);
+  Object.keys(detailCache).forEach(k => delete detailCache[k]);
+
+  try {
+    const resp = await fetch(API + '/api/recruit/analyze-unified', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobDescription: jobDesc, candidates })
+    });
+    const data = await safeJson(resp);
+    if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+
+    // Cachear resultados
+    data.candidates.forEach(c => { detailCache[c.name] = c; });
+
+    renderRanking(data.candidates);
+    setResults('analysis', true);
+  } catch (e) {
+    setError('analysis', e.message);
+  } finally {
+    setLoading('analysis', false);
+  }
+}
+
+// ── RENDER RANKING ─────────────────────────────────────────────────────────
+function renderRanking(candidates) {
+  const list = $('ranking-list');
+  list.innerHTML = '';
+  $('candidate-count').textContent = `— ${candidates.length} candidato${candidates.length !== 1 ? 's' : ''}`;
+
+  candidates.forEach((c, i) => {
+    const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : 'score-low';
+    const verdictClass = 'verdict-' + c.verdict.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s/g, '');
+
+    const card = document.createElement('div');
+    card.className = 'rank-card' + (i === 0 ? ' rank-top' : '');
+    card.id = 'rcard-' + i;
+
+    const strengthTags = (c.strengths || []).slice(0, 2)
+      .map(s => `<span class="tag tag-strength">✓ ${s}</span>`).join('');
+    const weaknessTags = (c.weaknesses || []).slice(0, 1)
+      .map(w => `<span class="tag tag-weakness">⚠ ${w}</span>`).join('');
+
+    card.innerHTML = `
+      <div class="rank-header" onclick="toggleDetail(${i}, '${c.name.replace(/'/g,"\\'")}')">
+        <div class="score-circle ${scoreClass}">${c.score}</div>
+        <div>
+          <div class="rank-name">${c.name}</div>
+          <div class="rank-tags">${strengthTags}${weaknessTags}</div>
+        </div>
+        <div class="verdict-badge ${verdictClass}">${c.verdict}</div>
+        <div class="chevron">▼</div>
+      </div>
+      <div class="rank-detail" id="detail-${i}">
+        <div class="detail-loading" id="detail-loading-${i}" style="display:none;">
+          <div class="spinner"></div> Cargando análisis detallado...
+        </div>
+        <div id="detail-content-${i}"></div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+// ── TOGGLE DETAIL ──────────────────────────────────────────────────────────
+function toggleDetail(idx, name) {
+  const card = $('rcard-' + idx);
+  const isOpen = card.classList.contains('open');
+
+  // Cerrar todos
+  document.querySelectorAll('.rank-card.open').forEach(c => c.classList.remove('open'));
+
+  if (!isOpen) {
+    card.classList.add('open');
+    // El detalle ya está cacheado del analyze-unified
+    const data = detailCache[name];
+    if (data) {
+      renderDetail(idx, data);
+    }
+  }
+}
+
+// ── RENDER DETAIL ──────────────────────────────────────────────────────────
+function renderDetail(idx, data) {
+  const container = $('detail-content-' + idx);
+  if (container.dataset.rendered) return; // ya renderizado
+  container.dataset.rendered = '1';
+
+  const incons = data.inconsistencies;
+  const questions = data.questions;
+
+  // Findings HTML
+  let findingsHtml = '';
+  if (!incons.findings || incons.findings.length === 0) {
+    findingsHtml = '<div class="no-findings">✅ Sin inconsistencias detectadas</div>';
+  } else {
+    findingsHtml = incons.findings.map(f => `
+      <div class="finding-item">
+        <div class="finding-top">
+          <span class="risk-badge risk-${f.riskLevel.toLowerCase()}">${f.riskLevel}</span>
+          <span class="finding-category">${f.category}</span>
+        </div>
+        <div class="finding-desc">${f.description}</div>
+        <div class="finding-q">💬 ${f.suggestedQuestion}</div>
+      </div>
+    `).join('');
+  }
+
+  // Questions HTML helper
+  const renderQs = (qs) => qs.map((q, i) => `
+    <div class="question-item">
+      <button class="copy-btn" onclick="copyText(${JSON.stringify(q.question)}, this)">Copiar</button>
+      <div class="q-text">${i + 1}. ${q.question}</div>
+      <div class="q-meta"><span class="q-meta-label">Valida: </span>${q.whatToValidate}</div>
+      <div class="q-meta"><span class="q-meta-label">Resp. fuerte: </span>${q.strongAnswerIndicator}</div>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    ${incons.summary ? `<div class="summary-box">${incons.summary}</div>` : ''}
+    <div class="detail-grid">
+      <div class="detail-section">
+        <div class="detail-section-title">
+          <span class="detail-dot dot-red"></span>
+          Inconsistencias (${incons.findings?.length || 0})
+        </div>
+        ${findingsHtml}
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">
+          <span class="detail-dot dot-blue"></span>
+          Preguntas de entrevista
+        </div>
+        <div class="questions-tabs">
+          <button class="q-tab active" onclick="switchQTab(${idx},'tech',this)">Técnicas (${questions.technical?.length||0})</button>
+          <button class="q-tab" onclick="switchQTab(${idx},'cult',this)">Cultural (${questions.cultural?.length||0})</button>
+          <button class="q-tab" onclick="switchQTab(${idx},'weak',this)">Débiles (${questions.weaknessValidation?.length||0})</button>
+        </div>
+        <div id="qtab-tech-${idx}" class="q-panel active">${renderQs(questions.technical||[])}</div>
+        <div id="qtab-cult-${idx}" class="q-panel">${renderQs(questions.cultural||[])}</div>
+        <div id="qtab-weak-${idx}" class="q-panel">${renderQs(questions.weaknessValidation||[])}</div>
+      </div>
+    </div>
+  `;
+}
+
+function switchQTab(idx, tab, btn) {
+  ['tech','cult','weak'].forEach(t => {
+    $('qtab-' + t + '-' + idx)?.classList.toggle('active', t === tab);
+  });
+  btn.closest('.questions-tabs').querySelectorAll('.q-tab')
+    .forEach(b => b.classList.toggle('active', b === btn));
+}
+
+// ── LINKEDIN ───────────────────────────────────────────────────────────────
+async function fetchLinkedInUrl() {
+  const url = $('linkedin-url').value.trim();
+  if (!url) { showToast('Ingresá una URL'); return; }
+  const btn = $('fetch-btn');
+  const status = $('fetch-status');
+  btn.disabled = true; btn.textContent = 'Importando...';
+  status.style.display = 'block'; status.style.color = 'var(--info)';
+  status.textContent = 'Intentando acceder al perfil...';
+  try {
+    const resp = await fetch(API + '/api/recruit/fetch-linkedin-url', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await safeJson(resp);
+    if (data.success && data.text) {
+      $('linkedin-text').value = data.text;
+      status.style.color = 'var(--success)';
+      status.textContent = '✓ Perfil importado. Revisá el texto antes de analizar.';
+    } else {
+      status.style.color = 'var(--warning)';
+      status.textContent = '⚠ ' + (data.message || 'No se pudo importar. Pegá el texto manualmente.');
+    }
+  } catch(e) {
+    status.style.color = 'var(--danger)'; status.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importar';
+  }
+}
+
+async function runLinkedIn() {
+  const jobDesc = $('linkedin-job').value.trim();
+  const profileText = $('linkedin-text').value.trim();
+  if (!jobDesc) { setError('linkedin', 'Ingresá la descripción del puesto.'); return; }
+  if (!profileText) { setError('linkedin', 'Pegá el texto del perfil de LinkedIn.'); return; }
+  setError('linkedin', ''); setResults('linkedin', false);
+  setLoading('linkedin', true);
+  try {
+    const resp = await fetch(API + '/api/recruit/analyze-linkedin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobDescription: jobDesc, profileText })
+    });
+    const data = await safeJson(resp);
+    if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+    renderLinkedIn(data); setResults('linkedin', true);
+  } catch(e) { setError('linkedin', e.message); }
+  finally { setLoading('linkedin', false); }
+}
+
+function renderLinkedIn(data) {
+  const alignClass = 'align-' + (data.alignmentLevel||'medio').toLowerCase();
+  const recKey = (data.recommendation||'').toLowerCase();
+  const recClass = recKey.includes('no') ? 'rec-no' : recKey.includes('evaluar') ? 'rec-evaluar' : 'rec-contactar';
+  const recIcon = recClass === 'rec-contactar' ? '✅' : recClass === 'rec-evaluar' ? '🔍' : '❌';
+
+  $('linkedin-recommendation').innerHTML = `
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+      <span class="alignment-badge ${alignClass}">Alineación: ${data.alignmentLevel}</span>
+    </div>
+    <div class="recommendation-card ${recClass}">
+      <div class="rec-icon">${recIcon}</div>
+      <div>
+        <div class="rec-verdict">${data.recommendation}</div>
+        <div class="rec-reason">${data.recommendationReason}</div>
+      </div>
+    </div>
+  `;
+  $('positive-signals').innerHTML = (data.positiveSignals||[])
+    .map(s => `<div class="signal-item signal-positive">${s}</div>`).join('')
+    || '<span style="font-size:0.8rem;color:var(--text-muted)">Ninguna detectada</span>';
+  $('red-flags').innerHTML = (data.redFlags||[])
+    .map(f => `<div class="signal-item signal-negative">${f}</div>`).join('')
+    || '<span style="font-size:0.8rem;color:var(--success)">Sin red flags ✓</span>';
+  $('screening-questions').innerHTML = (data.screeningQuestions||[])
+    .map((q,i) => `<div class="screening-q"><span class="q-num">${i+1}.</span><span>${q}</span></div>`).join('');
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+addCandidate();
+addCandidate();
+</script>
+</body>
+</html>
