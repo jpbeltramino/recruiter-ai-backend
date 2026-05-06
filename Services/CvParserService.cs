@@ -50,4 +50,34 @@ public class CvParserService
 
         throw new ArgumentException("Debe proporcionar texto del CV o un PDF en base64.");
     }
+
+    public string ExtractName(byte[] pdfBytes)
+{
+    try
+    {
+        using var ms = new MemoryStream(pdfBytes);
+        using var reader = new PdfReader(ms);
+        using var document = new PdfDocument(reader);
+
+        
+        var info = document.GetDocumentInfo();
+        if (!string.IsNullOrWhiteSpace(info.GetAuthor()))
+            return info.GetAuthor().Trim();
+
+        
+        var firstPage = PdfTextExtractor.GetTextFromPage(
+            document.GetPage(1),
+            new SimpleTextExtractionStrategy()
+        );
+        var firstLine = firstPage.Split('\n')
+            .Select(l => l.Trim())
+            .FirstOrDefault(l => l.Length > 2 && l.Length < 60);
+
+        return firstLine ?? string.Empty;
+    }
+    catch
+    {
+        return string.Empty;
+    }
+}
 }

@@ -38,6 +38,27 @@ app.Use(async (context, next) =>
     }
 });
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        var token = context.Request.Headers["X-Api-Token"].ToString();
+        var config = context.RequestServices.GetRequiredService<IConfiguration>();
+        var validTokens = config
+            .GetSection("Auth:ValidTokens")
+            .Get<List<string>>() ?? [];
+
+        if (!validTokens.Contains(token))
+        {
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync("{\"error\": \"Token inválido\"}");
+            return;
+        }
+    }
+    await next();
+});
+
 app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();

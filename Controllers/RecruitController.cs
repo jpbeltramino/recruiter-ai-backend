@@ -126,60 +126,78 @@ public class RecruitController : ControllerBase
 
     [HttpPost("analyze-unified")]
     public async Task<IActionResult> AnalyzeUnified([FromBody] UnifiedAnalysisRequest request)
-{
-    if (string.IsNullOrWhiteSpace(request.JobDescription))
-        return BadRequest(new { error = "La descripción del puesto es obligatoria." });
-
-    if (request.Candidates == null || request.Candidates.Count == 0)
-        return BadRequest(new { error = "Debe proporcionar al menos un candidato." });
-
-    try
     {
-        // Resolver textos de todos los CVs
-        var resolved = new List<(string Name, string CvText)>();
-        foreach (var candidate in request.Candidates)
+        if (string.IsNullOrWhiteSpace(request.JobDescription))
+            return BadRequest(new { error = "La descripción del puesto es obligatoria." });
+
+        if (request.Candidates == null || request.Candidates.Count == 0)
+            return BadRequest(new { error = "Debe proporcionar al menos un candidato." });
+
+        try
         {
-            if (string.IsNullOrWhiteSpace(candidate.Name))
-                return BadRequest(new { error = "Cada candidato debe tener un nombre." });
+            // Resolver textos de todos los CVs
+            var resolved = new List<(string Name, string CvText)>();
+            foreach (var candidate in request.Candidates)
+            {
+                if (string.IsNullOrWhiteSpace(candidate.Name))
+                    return BadRequest(new { error = "Cada candidato debe tener un nombre." });
 
-            var text = _parser.Resolve(candidate.Text, candidate.PdfBase64);
-            resolved.Add((candidate.Name, text));
+                var text = _parser.Resolve(candidate.Text, candidate.PdfBase64);
+                resolved.Add((candidate.Name, text));
+            }
+
+            // Analizar todos en paralelo
+            // var tasks = resolved.Select(c =>
+            //     _claude.AnalyzeCandidateFullAsync(request.JobDescription, c.Name, c.CvText)
+            // );
+
+            // var results = await Task.WhenAll(tasks);
+
+            //TOOD: Descomentar lo de arriba cuando pueda hacer llamdas en simultaneo 
+
+            var results = new List<UnifiedCandidateResult>();
+            foreach (var c in resolved)
+            {
+                var result = await _claude.AnalyzeCandidateFullAsync(
+                    request.JobDescription, c.Name, c.CvText);
+                results.Add(result);
+                if (c != resolved.Last()) await Task.Delay(1000);
+            }
+
+            var response = new UnifiedAnalysisResponse(
+                Candidates: results
+                    .OrderByDescending(c => c.Score)
+                    .ToList()
+            );
+
+            return Ok(response);
         }
-
-        // Analizar todos en paralelo
-        // var tasks = resolved.Select(c =>
-        //     _claude.AnalyzeCandidateFullAsync(request.JobDescription, c.Name, c.CvText)
-        // );
-
-        // var results = await Task.WhenAll(tasks);
-
-        //TOOD: Descomentar lo de arriba cuando pueda hacer llamdas en simultaneo 
-
-        var results = new List<UnifiedCandidateResult>();
-        foreach (var c in resolved)
+        catch (ArgumentException ex)
         {
-            var result = await _claude.AnalyzeCandidateFullAsync(
-                request.JobDescription, c.Name, c.CvText);
-            results.Add(result);
-            if (c != resolved.Last()) await Task.Delay(1000);
+            return BadRequest(new { error = ex.Message });
         }
-
-        var response = new UnifiedAnalysisResponse(
-            Candidates: results
-                .OrderByDescending(c => c.Score)
-                .ToList()
-        );
-
-        return Ok(response);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en AnalyzeUnified");
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
-    catch (ArgumentException ex)
+    
+    [HttpPost("extract-name")]
+    public async Task<IActionResult> ExtractName([FromBody] ExtractNameRequest request)
     {
-        return BadRequest(new { error = ex.Message });
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.PdfBase64))
+                return BadRequest(new { error = "PDF requerido." });
+
+            var bytes = Convert.FromBase64String(request.PdfBase64);
+            var name = _parser.ExtractName(bytes);
+            return Ok(new { name });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error en AnalyzeUnified");
-        return StatusCode(500, new { error = ex.Message });
-    }
-}
 }
