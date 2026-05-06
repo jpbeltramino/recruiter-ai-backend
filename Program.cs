@@ -14,7 +14,11 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
+         policy.WithOrigins(
+            "http://localhost:4200",
+            "https://app.recruiterai.app",
+            "https://*.vercel.app"
+        )
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
