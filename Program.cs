@@ -27,7 +27,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Global JSON error handling — never return HTML
 app.Use(async (context, next) =>
 {
     try
@@ -43,8 +42,16 @@ app.Use(async (context, next) =>
     }
 });
 
+app.UseCors();
+
 app.Use(async (context, next) =>
 {
+    if (context.Request.Method == "OPTIONS")
+    {
+        await next();
+        return;
+    }
+
     if (context.Request.Path.StartsWithSegments("/api"))
     {
         var token = context.Request.Headers["X-Api-Token"].ToString();
@@ -52,7 +59,7 @@ app.Use(async (context, next) =>
         var validTokens = config
             .GetSection("Auth:ValidTokens")
             .Get<List<string>>() ?? new List<string>();
-    
+
         if (!validTokens.Contains(token))
         {
             context.Response.StatusCode = 401;
@@ -80,12 +87,9 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapControllers();
-
-// Fallback: serve index.html for SPA routing
 app.MapFallbackToFile("index.html");
 
 app.Run();
