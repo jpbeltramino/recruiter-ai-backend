@@ -42,42 +42,56 @@ public class CvParserService
     /// </summary>
     public string Resolve(string? plainText, string? base64Pdf)
     {
-        if (!string.IsNullOrWhiteSpace(plainText))
-            return plainText.Trim();
-
         if (!string.IsNullOrWhiteSpace(base64Pdf))
             return ExtractTextFromBase64(base64Pdf);
 
-        throw new ArgumentException("Debe proporcionar texto del CV o un PDF en base64.");
+        if (!string.IsNullOrWhiteSpace(plainText))
+            return plainText.Trim();
+
+        throw new ArgumentException("Debe proporcionar un PDF.");
     }
 
     public string ExtractName(byte[] pdfBytes)
-{
-    try
     {
-        using var ms = new MemoryStream(pdfBytes);
-        using var reader = new PdfReader(ms);
-        using var document = new PdfDocument(reader);
+        try
+        {
+            using var ms = new MemoryStream(pdfBytes);
+            using var reader = new PdfReader(ms);
+            using var document = new PdfDocument(reader);
 
-        
-        var info = document.GetDocumentInfo();
-        if (!string.IsNullOrWhiteSpace(info.GetAuthor()))
-            return info.GetAuthor().Trim();
+            var firstPage = PdfTextExtractor.GetTextFromPage(
+                document.GetPage(1),
+                new SimpleTextExtractionStrategy()
+            );
 
-        
-        var firstPage = PdfTextExtractor.GetTextFromPage(
-            document.GetPage(1),
-            new SimpleTextExtractionStrategy()
-        );
-        var firstLine = firstPage.Split('\n')
-            .Select(l => l.Trim())
-            .FirstOrDefault(l => l.Length > 2 && l.Length < 60);
+            var lines = firstPage.Split('\n')
+                .Select(l => l.Trim())
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Take(10)
+                .ToList();
 
-        return firstLine ?? string.Empty;
+            foreach (var line in lines)
+            {
+                if (line.Contains('@')) continue;
+                if (line.Any(char.IsDigit)) continue;
+                if (line.Length < 5 || line.Length > 60) continue;
+
+                var words = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (words.Length < 2 || words.Length > 5) continue;
+
+                var validNameWords = words.All(w =>
+                    w.Length >= 2 &&
+                    char.IsUpper(w[0]) &&
+                    w.All(c => char.IsLetter(c) || c == '\'' || c == '-'));
+
+                if (validNameWords) return line;
+            }
+
+            return string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
-    catch
-    {
-        return string.Empty;
-    }
-}
 }
