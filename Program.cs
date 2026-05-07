@@ -21,7 +21,8 @@ builder.Services.AddCors(options =>
             "https://*.vercel.app"
         )
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .WithExposedHeaders("X-RateLimit-Limit", "X-RateLimit-Used", "X-RateLimit-Reset");
     });
 });
 
