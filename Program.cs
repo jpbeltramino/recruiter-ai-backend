@@ -8,6 +8,7 @@ builder.Services.AddEndpointsApiExplorer();
 // Register services
 builder.Services.AddSingleton<ClaudeService>();
 builder.Services.AddSingleton<CvParserService>();
+builder.Services.AddSingleton<RateLimitService>();
 
 // CORS — allow all origins for development
 builder.Services.AddCors(options =>
@@ -50,13 +51,29 @@ app.Use(async (context, next) =>
         var config = context.RequestServices.GetRequiredService<IConfiguration>();
         var validTokens = config
             .GetSection("Auth:ValidTokens")
-            .Get<List<string>>() ?? [];
-
+            .Get<List<string>>() ?? new List<string>();
+    
         if (!validTokens.Contains(token))
         {
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync("{\"error\": \"Token inválido\"}");
+            return;
+        }
+
+        var rateLimit = context.RequestServices.GetRequiredService<RateLimitService>();
+        var result = rateLimit.CheckAndIncrement(token);
+
+        context.Response.Headers["X-RateLimit-Limit"] = result.Limit.ToString();
+        context.Response.Headers["X-RateLimit-Used"] = result.Used.ToString();
+        context.Response.Headers["X-RateLimit-Reset"] = result.ResetAt.ToString("o");
+
+        if (!result.Allowed)
+        {
+            context.Response.StatusCode = 429;
+            context.Response.ContentType = "application/json";
+            var error = $"{{\"error\": \"Límite diario alcanzado ({result.Limit} análisis). Se renueva mañana.\"}}";
+            await context.Response.WriteAsync(error);
             return;
         }
     }
