@@ -9,6 +9,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSingleton<ClaudeService>();
 builder.Services.AddSingleton<CvParserService>();
 builder.Services.AddSingleton<RateLimitService>();
+builder.Services.AddSingleton<FileValidationService>();
 
 // CORS — allow all origins for development
 builder.Services.AddCors(options =>

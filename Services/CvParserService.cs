@@ -51,47 +51,5 @@ public class CvParserService
         throw new ArgumentException("Debe proporcionar un PDF.");
     }
 
-    public string ExtractName(byte[] pdfBytes)
-    {
-        try
-        {
-            using var ms = new MemoryStream(pdfBytes);
-            using var reader = new PdfReader(ms);
-            using var document = new PdfDocument(reader);
 
-            var firstPage = PdfTextExtractor.GetTextFromPage(
-                document.GetPage(1),
-                new SimpleTextExtractionStrategy()
-            );
-
-            var lines = firstPage.Split('\n')
-                .Select(l => l.Trim())
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Take(10)
-                .ToList();
-
-            foreach (var line in lines)
-            {
-                if (line.Contains('@')) continue;
-                if (line.Any(char.IsDigit)) continue;
-                if (line.Length < 5 || line.Length > 60) continue;
-
-                var words = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (words.Length < 2 || words.Length > 5) continue;
-
-                var validNameWords = words.All(w =>
-                    w.Length >= 2 &&
-                    char.IsUpper(w[0]) &&
-                    w.All(c => char.IsLetter(c) || c == '\'' || c == '-'));
-
-                if (validNameWords) return line;
-            }
-
-            return string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
 }

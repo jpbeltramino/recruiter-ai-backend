@@ -7,23 +7,20 @@ namespace RecruiterAI.Controllers;
 [ApiController]
 [Route("api/recruit")]
 [Produces("application/json")]
-public class RecruitController : ControllerBase
+public class RecruitController(
+    ClaudeService claude,
+    CvParserService parser,
+    FileValidationService validator,
+    ILogger<RecruitController> logger) : ControllerBase
 {
-    private readonly ClaudeService _claude;
-    private readonly CvParserService _parser;
-    private readonly ILogger<RecruitController> _logger;
+    private readonly ClaudeService _claude = claude;
+    private readonly CvParserService _parser = parser;
+    private readonly ILogger<RecruitController> _logger = logger;
 
-    public RecruitController(
-        ClaudeService claude,
-        CvParserService parser,
-        ILogger<RecruitController> logger)
-    {
-        _claude = claude;
-        _parser = parser;
-        _logger = logger;
-    }
+    private readonly FileValidationService _validator = validator;
 
     // ─── 1. RANKEADOR DE CVs ─────────────────────────────────────────────────
+
 
     /// <summary>
     /// POST /api/recruit/rank-cvs
@@ -135,39 +132,30 @@ public class RecruitController : ControllerBase
 
         try
         {
-            // Resolver textos de todos los CVs
+            _validator.ValidateCandidateCount(request.Candidates.Count);
+
             var resolved = new List<(string Name, string CvText)>();
             foreach (var candidate in request.Candidates)
             {
                 if (string.IsNullOrWhiteSpace(candidate.Name))
                     return BadRequest(new { error = "Cada candidato debe tener un nombre." });
 
+                if (!string.IsNullOrWhiteSpace(candidate.PdfBase64))
+                    _validator.ValidatePdfBase64(candidate.PdfBase64, candidate.Name);
+
                 var text = _parser.Resolve(candidate.Text, candidate.PdfBase64);
+                text = _validator.TruncateText(text);
                 resolved.Add((candidate.Name, text));
             }
 
-            // Analizar todos en paralelo
-            // var tasks = resolved.Select(c =>
-            //     _claude.AnalyzeCandidateFullAsync(request.JobDescription, c.Name, c.CvText)
-            // );
+            var tasks = resolved.Select(c =>
+                _claude.AnalyzeCandidateFullAsync(request.JobDescription, c.Name, c.CvText)
+            );
 
-            // var results = await Task.WhenAll(tasks);
-
-            //TOOD: Descomentar lo de arriba cuando pueda hacer llamdas en simultaneo 
-
-            var results = new List<UnifiedCandidateResult>();
-            foreach (var c in resolved)
-            {
-                var result = await _claude.AnalyzeCandidateFullAsync(
-                    request.JobDescription, c.Name, c.CvText);
-                results.Add(result);
-                if (c != resolved.Last()) await Task.Delay(1000);
-            }
+            var results = await Task.WhenAll(tasks);
 
             var response = new UnifiedAnalysisResponse(
-                Candidates: results
-                    .OrderByDescending(c => c.Score)
-                    .ToList()
+                Candidates: results.OrderByDescending(c => c.Score).ToList()
             );
 
             return Ok(response);
@@ -182,22 +170,5 @@ public class RecruitController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
-    
-    [HttpPost("extract-name")]
-    public async Task<IActionResult> ExtractName([FromBody] ExtractNameRequest request)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(request.PdfBase64))
-                return BadRequest(new { error = "PDF requerido." });
-
-            var bytes = Convert.FromBase64String(request.PdfBase64);
-            var name = _parser.ExtractName(bytes);
-            return Ok(new { name });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
+   
 }

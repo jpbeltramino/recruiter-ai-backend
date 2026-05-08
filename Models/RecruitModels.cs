@@ -103,4 +103,4 @@ public record UnifiedAnalysisResponse(
     List<UnifiedCandidateResult> Candidates
 );
 
-public record ExtractNameRequest(string PdfBase64);
+
