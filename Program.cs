@@ -16,14 +16,26 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-         policy.WithOrigins(
-            "http://localhost:4200",
-            "https://app.recruiterai.app",
-            "https://*.vercel.app"
-        )
+        var allowedOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>() ?? Array.Empty<string>();
+
+        if (allowedOrigins.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigins no está configurado. " +
+                "Definir al menos un origen permitido."
+            );
+        }
+
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .WithExposedHeaders("X-RateLimit-Limit", "X-RateLimit-Used", "X-RateLimit-Reset");
+              .WithExposedHeaders(
+                  "X-RateLimit-Limit",
+                  "X-RateLimit-Used",
+                  "X-RateLimit-Reset"
+              );
     });
 });
 
