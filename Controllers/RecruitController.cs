@@ -119,8 +119,6 @@ public class RecruitController(
         }
     }
 
-    
-
     [HttpPost("analyze-unified")]
     public async Task<IActionResult> AnalyzeUnified([FromBody] UnifiedAnalysisRequest request)
     {
@@ -129,6 +127,10 @@ public class RecruitController(
 
         if (request.Candidates == null || request.Candidates.Count == 0)
             return BadRequest(new { error = "Debe proporcionar al menos un candidato." });
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _logger.LogInformation("AnalyzeUnified iniciado con {CandidateCount} candidatos",
+            request.Candidates.Count);
 
         try
         {
@@ -158,17 +160,20 @@ public class RecruitController(
                 Candidates: results.OrderByDescending(c => c.Score).ToList()
             );
 
+            _logger.LogInformation("AnalyzeUnified completado en {ElapsedMs}ms para {CandidateCount} candidatos",
+                sw.ElapsedMilliseconds, request.Candidates.Count);
+
             return Ok(response);
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning("Validación falló: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en AnalyzeUnified");
+            _logger.LogError(ex, "Error en AnalyzeUnified después de {ElapsedMs}ms", sw.ElapsedMilliseconds);
             return StatusCode(500, new { error = ex.Message });
         }
     }
-   
 }

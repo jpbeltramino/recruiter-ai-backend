@@ -8,6 +8,7 @@ namespace RecruiterAI.Services;
 public class ClaudeService
 {
     private readonly AnthropicClient _client;
+    private readonly ILogger<ClaudeService> _logger;
     private const string Model = "claude-haiku-4-5-20251001";
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -16,15 +17,20 @@ public class ClaudeService
         WriteIndented = false
     };
 
-    public ClaudeService(IConfiguration config)
+    public ClaudeService(IConfiguration config, ILogger<ClaudeService> logger)
     {
         var apiKey = config["Anthropic:ApiKey"]
             ?? throw new InvalidOperationException("Falta Anthropic:ApiKey en appsettings.json");
         _client = new AnthropicClient(apiKey);
+        _logger = logger;
     }
 
     private async Task<string> CallClaude(string userMessage, int maxTokens = 2048)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _logger.LogInformation("Llamada a Claude iniciada. MaxTokens={MaxTokens}, MessageLength={MessageLength}",
+            maxTokens, userMessage.Length);
+
         var messages = new List<Message>
         {
             new Message
@@ -41,9 +47,22 @@ public class ClaudeService
             Messages = messages
         };
 
-        var response = await _client.Messages.GetClaudeMessageAsync(parameters);
-        return response.Content.OfType<TextContent>().FirstOrDefault()?.Text
-            ?? throw new Exception("Claude no devolvio texto.");
+        try
+        {
+            var response = await _client.Messages.GetClaudeMessageAsync(parameters);
+            var text = response.Content.OfType<TextContent>().FirstOrDefault()?.Text
+                    ?? throw new Exception("Claude no devolvió texto.");
+
+            _logger.LogInformation("Llamada a Claude completada en {ElapsedMs}ms. ResponseLength={ResponseLength}",
+                sw.ElapsedMilliseconds, text.Length);
+
+            return text;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Llamada a Claude falló después de {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            throw;
+        }
     }
 
     private static T ParseJson<T>(string raw)
