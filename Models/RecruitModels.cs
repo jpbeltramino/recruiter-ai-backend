@@ -96,11 +96,23 @@ public record UnifiedCandidateResult(
     List<string> Weaknesses,
     string Verdict,
     DetectInconsistenciesResponse Inconsistencies,
-    GenerateQuestionsResponse Questions
+    GenerateQuestionsResponse Questions,
+    bool HasDeepAnalysis = false
 );
 
 public record UnifiedAnalysisResponse(
     List<UnifiedCandidateResult> Candidates
 );
 
+public record DeepAnalysisRequest(
+    string JobDescription,
+    string CandidateName,
+    string? Text,
+    string? PdfBase64
+);
+
+public record DeepAnalysisResponse(
+    DetectInconsistenciesResponse Inconsistencies,
+    GenerateQuestionsResponse Questions
+);
 

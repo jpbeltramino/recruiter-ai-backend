@@ -176,4 +176,45 @@ public class RecruitController(
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpPost("analyze-deep")]
+    public async Task<IActionResult> AnalyzeDeep([FromBody] DeepAnalysisRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.JobDescription))
+            return BadRequest(new { error = "La descripción del puesto es obligatoria." });
+
+        if (string.IsNullOrWhiteSpace(request.CandidateName))
+            return BadRequest(new { error = "El nombre del candidato es obligatorio." });
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _logger.LogInformation("AnalyzeDeep iniciado para candidato {CandidateName}",
+            request.CandidateName);
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(request.PdfBase64))
+                _validator.ValidatePdfBase64(request.PdfBase64, request.CandidateName);
+
+            var text = _parser.Resolve(request.Text, request.PdfBase64);
+            text = _validator.TruncateText(text);
+
+            var result = await _claude.AnalyzeCandidateDeepAsync(request.JobDescription, text);
+
+            _logger.LogInformation("AnalyzeDeep completado en {ElapsedMs}ms para {CandidateName}",
+                sw.ElapsedMilliseconds, request.CandidateName);
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Validación falló en AnalyzeDeep: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en AnalyzeDeep después de {ElapsedMs}ms",
+                sw.ElapsedMilliseconds);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }

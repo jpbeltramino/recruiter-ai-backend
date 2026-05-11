@@ -261,32 +261,56 @@ public class ClaudeService
     string jobDescription,
     string name,
     string cvText)
-{
-    // // Ejecutar los 3 análisis en paralelo
-    // var rankTask = RankCvsAsync(jobDescription, new List<(string, string)> { (name, cvText) });
-    // var inconsTask = DetectInconsistenciesAsync(cvText);
-    // var questTask = GenerateQuestionsAsync(jobDescription, cvText);
+        {
+            var rankResult = await RankCvsAsync(jobDescription, new List<(string, string)> { (name, cvText) });
+            var ranking = rankResult.Rankings.First();
 
-    // await Task.WhenAll(rankTask, inconsTask, questTask);
+            if (ranking.Score < 7)
+            {
+                return new UnifiedCandidateResult(
+                    Name: name,
+                    Score: ranking.Score,
+                    Strengths: ranking.Strengths,
+                    Weaknesses: ranking.Weaknesses,
+                    Verdict: ranking.Verdict,
+                    Inconsistencies: new DetectInconsistenciesResponse(
+                        new List<InconsistencyFinding>(),
+                        string.Empty
+                    ),
+                    Questions: new GenerateQuestionsResponse(
+                        new List<InterviewQuestion>(),
+                        new List<InterviewQuestion>(),
+                        new List<InterviewQuestion>()
+                    ),
+                    HasDeepAnalysis: false
+                );
+            }
 
-    //TODO ESTO SE HACE AHORA PORQUE NO PERMITE LLAMDAAS SIMULTANEAS, DESPUES DESCOMENTAR LO DE ARRIBA 
+            await Task.Delay(500);
+            var inconsResult = await DetectInconsistenciesAsync(cvText);
+            await Task.Delay(500);
+            var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
 
-    var rankResult = await RankCvsAsync(jobDescription, new List<(string, string)> { (name, cvText) });
-    await Task.Delay(500);
-    var inconsResult = await DetectInconsistenciesAsync(cvText);
-    await Task.Delay(500);
-    var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
+            return new UnifiedCandidateResult(
+                Name: name,
+                Score: ranking.Score,
+                Strengths: ranking.Strengths,
+                Weaknesses: ranking.Weaknesses,
+                Verdict: ranking.Verdict,
+                Inconsistencies: inconsResult,
+                Questions: questResult,
+                HasDeepAnalysis: true
+            );
+        }
 
-    var ranking = rankResult.Rankings.First();
+    public async Task<DeepAnalysisResponse> AnalyzeCandidateDeepAsync(
+        string jobDescription,
+        string cvText)
+    {
+        var inconsResult = await DetectInconsistenciesAsync(cvText);
+        await Task.Delay(500);
+        var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
 
-    return new UnifiedCandidateResult(
-        Name: name,
-        Score: ranking.Score,
-        Strengths: ranking.Strengths,
-        Weaknesses: ranking.Weaknesses,
-        Verdict: ranking.Verdict,
-        Inconsistencies: inconsResult,
-        Questions: questResult
-    );
-}
+        return new DeepAnalysisResponse(inconsResult, questResult);
+    }
 }
