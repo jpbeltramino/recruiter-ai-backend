@@ -216,4 +216,10 @@ public class RecruitController(
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpGet("validate-token")]
+    public IActionResult ValidateToken()
+    {
+        return Ok(new { valid = true });
+    }
 }
