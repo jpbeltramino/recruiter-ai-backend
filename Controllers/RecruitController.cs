@@ -150,11 +150,10 @@ public class RecruitController(
                 resolved.Add((candidate.Name, text));
             }
 
-            var tasks = resolved.Select(c =>
-                _claude.AnalyzeCandidateFullAsync(request.JobDescription, c.Name, c.CvText)
+            var results = await _claude.AnalyzeCandidatesParallelAsync(
+                request.JobDescription,
+                resolved
             );
-
-            var results = await Task.WhenAll(tasks);
 
             var response = new UnifiedAnalysisResponse(
                 Candidates: results.OrderByDescending(c => c.Score).ToList()

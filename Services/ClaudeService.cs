@@ -10,6 +10,9 @@ public class ClaudeService
     private readonly AnthropicClient _client;
     private readonly ILogger<ClaudeService> _logger;
     private const string Model = "claude-haiku-4-5-20251001";
+    private readonly int _batchSize;
+    private readonly int _delayBetweenBatchesMs;
+    
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -23,6 +26,9 @@ public class ClaudeService
             ?? throw new InvalidOperationException("Falta Anthropic:ApiKey en appsettings.json");
         _client = new AnthropicClient(apiKey);
         _logger = logger;
+
+        _batchSize = config.GetValue<int>("Parallelism:BatchSize", 5);
+        _delayBetweenBatchesMs = config.GetValue<int>("Parallelism:DelayBetweenBatchesMs", 1000);
     }
 
     private async Task<string> CallClaude(string userMessage, int maxTokens = 2048)
@@ -331,14 +337,77 @@ public class ClaudeService
             );
         }
 
+        public async Task<List<UnifiedCandidateResult>> AnalyzeCandidatesParallelAsync(
+    string jobDescription,
+    List<(string Name, string CvText)> candidates)
+    {
+        _logger.LogInformation("Procesando {Count} candidatos en paralelo (lotes de 5)",
+            candidates.Count);
+
+        var results = await ProcessInBatchesAsync(
+            candidates,
+            batchSize: _batchSize,
+            delayBetweenBatchesMs: _delayBetweenBatchesMs,
+            processor: async candidate =>
+            {
+                try
+                {
+                    return await AnalyzeCandidateFullAsync(jobDescription, candidate.Name, candidate.CvText);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error analizando candidato {Name}", candidate.Name);
+                    return new UnifiedCandidateResult(
+                        Name: candidate.Name,
+                        Score: 0,
+                        Strengths: new List<string>(),
+                        Weaknesses: new List<string> { "Error al procesar este candidato" },
+                        Verdict: "DESCARTAR",
+                        Inconsistencies: new DetectInconsistenciesResponse(new List<InconsistencyFinding>(), string.Empty),
+                        Questions: new GenerateQuestionsResponse(new List<InterviewQuestion>(), new List<InterviewQuestion>(), new List<InterviewQuestion>()),
+                        HasDeepAnalysis: false
+                    );
+                }
+            }
+        );
+
+        return results;
+    }
+
     public async Task<DeepAnalysisResponse> AnalyzeCandidateDeepAsync(
         string jobDescription,
         string cvText)
-    {
-        var inconsResult = await DetectInconsistenciesAsync(cvText);
-        await Task.Delay(500);
-        var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
+        {
+            var inconsResult = await DetectInconsistenciesAsync(cvText);
+            await Task.Delay(500);
+            var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
 
-        return new DeepAnalysisResponse(inconsResult, questResult);
+            return new DeepAnalysisResponse(inconsResult, questResult);
+        }
+    private static async Task<List<T>> ProcessInBatchesAsync<TInput, T>(
+    IEnumerable<TInput> items,
+    int batchSize,
+    int delayBetweenBatchesMs,
+    Func<TInput, Task<T>> processor)
+    {
+        var results = new List<T>();
+        var batches = items
+            .Select((item, index) => new { item, index })
+            .GroupBy(x => x.index / batchSize)
+            .Select(g => g.Select(x => x.item).ToList())
+            .ToList();
+
+        for (int i = 0; i < batches.Count; i++)
+        {
+            var batch = batches[i];
+            var tasks = batch.Select(processor);
+            var batchResults = await Task.WhenAll(tasks);
+            results.AddRange(batchResults);
+
+            if (i < batches.Count - 1)
+                await Task.Delay(delayBetweenBatchesMs);
+        }
+
+        return results;
     }
 }
