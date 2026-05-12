@@ -107,66 +107,76 @@ public class ClaudeService
     }
 
     private static string InconsistenciasPrompt(string cvText)
-    {
-        return
-            "<instrucciones>\n" +
-            "Sos un experto en verificacion de antecedentes laborales. Tu objetivo es detectar " +
-            "inconsistencias REALES y RELEVANTES en el CV.\n\n" +
-            "==================================================================\n" +
-            "PROHIBIDO REPORTAR (estos casos NO son inconsistencias):\n" +
-            "==================================================================\n\n" +
-            "1. PROHIBIDO comparar la experiencia declarada en texto (frases como " +
-            "'+5 años de experiencia', 'más de 3 años', 'experiencia senior') contra la suma " +
-            "cronologica de los empleos. NO hagas esta comparacion bajo NINGUNA circunstancia. " +
-            "Si el perfil dice '+5 años' y la suma da 8, eso es un CV desactualizado, NO una " +
-            "inconsistencia. Ignora completamente las frases tipo '+X años' al evaluar.\n\n" +
-            "2. PROHIBIDO mencionar o asumir la fecha actual (mes/año). No calcules cuanto " +
-            "tiempo paso desde una fecha del CV hasta hoy. No digas 'estamos en X año'. " +
-            "Las inconsistencias deben ser INTERNAS al CV — contradicciones entre datos del " +
-            "propio CV, sin comparar contra el presente.\n\n" +
-            "3. PROHIBIDO reportar diferencias de duracion menores a 3 meses entre lo declarado " +
-            "y lo calculado (ej: declara '5 años 2 meses' y la cuenta da 5 años 1 mes — NO " +
-            "reportar). Estas son imprecisiones normales al redondear meses.\n\n" +
-            "4. PROHIBIDO reportar solapamientos de fechas menores a 2 meses entre empleos " +
-            "consecutivos — son transiciones normales.\n\n" +
-            "5. PROHIBIDO reportar trabajos simultaneos por si solos. Solo reportar si la " +
-            "simultaneidad es FISICAMENTE imposible (ej: dos roles full-time presenciales en " +
-            "ciudades distintas al mismo tiempo).\n\n" +
-            "6. PROHIBIDO inferir, suponer o calcular cosas que no esten escritas en el CV.\n\n" +
-            "==================================================================\n" +
-            "SI VALE LA PENA REPORTAR:\n" +
-            "==================================================================\n\n" +
-            "- Gaps SIN EXPLICACION de mas de 6 meses entre empleos consecutivos\n" +
-            "- Saltos de seniority bruscos sin experiencia que lo justifique " +
-            "(ej: pasar de junior a CTO en un año)\n" +
-            "- Fechas INTERNAMENTE imposibles (ej: empleo termina antes de empezar)\n" +
-            "- Solapamientos largos (>2 meses) entre roles que claramente no podrian ser simultaneos\n" +
-            "- Habilidades tecnicas avanzadas que no aparecen en ninguna experiencia laboral\n" +
-            "- Logros con numeros sospechosamente especificos sin contexto " +
-            "(ej: 'reduje costos 94%', 'lidere equipo de 47')\n" +
-            "- Titulos o instituciones educativas vagas o no verificables\n" +
-            "- Contradicciones internas reales (ej: en un rol dice 'lider de 20 personas' y " +
-            "en otra parte dice 'trabaje individualmente' del mismo periodo)\n\n" +
-            "==================================================================\n" +
-            "FORMATO DE RESPUESTA:\n" +
-            "==================================================================\n\n" +
-            "Para cada hallazgo RELEVANTE:\n" +
-            "- category: string corto del tipo de inconsistencia\n" +
-            "- description: explicacion clara citando datos del CV. NO menciones fecha actual. " +
-            "NO menciones '+X años' del perfil profesional.\n" +
-            "- riskLevel: \"ALTO\", \"MEDIO\" o \"BAJO\"\n" +
-            "- suggestedQuestion: pregunta concreta para validar en entrevista\n\n" +
-            "Incluye un \"summary\" de 2-3 oraciones con el perfil de riesgo general. " +
-            "Si no hay nada relevante, summary positivo y findings vacio.\n\n" +
-            "Responde UNICAMENTE con JSON valido:\n" +
-            "{\"findings\": [...], \"summary\": \"...\"}\n" +
-            "</instrucciones>\n\n" +
-            "<cv>\n" + cvText + "\n</cv>\n\n" +
-            "<tarea>\n" +
-            "Analiza el CV. Ante CUALQUIER duda de si algo es inconsistencia real, NO lo reportes. " +
-            "Recorda las 6 prohibiciones. Es mejor no reportar nada que reportar falsos positivos.\n" +
-            "</tarea>";
-    }
+        {
+            return
+                "<instrucciones>\n" +
+                "Sos un experto en verificacion de antecedentes laborales. Tu objetivo es detectar " +
+                "inconsistencias REALES y RELEVANTES en el CV.\n\n" +
+                "==================================================================\n" +
+                "REGLAS ABSOLUTAS — VIOLAR CUALQUIERA ES UN ERROR GRAVE:\n" +
+                "==================================================================\n\n" +
+                "REGLA 1 (ABSOLUTA): NUNCA reportes diferencias de duracion menores a 3 meses. " +
+                "Esto es INNEGOCIABLE. Si el CV dice '5 años 2 meses' y tu cuenta da '5 años 1 mes', " +
+                "NO lo reportes — ni siquiera como BAJO, ni siquiera con justificaciones adicionales, " +
+                "ni siquiera si encontras algun matiz que parezca interesante. NO LO REPORTES. " +
+                "Punto. No agregues ningun 'pero', 'aunque', 'sin embargo' para reportarlo igual. " +
+                "Si la diferencia es menor a 3 meses, la inconsistencia NO existe.\n\n" +
+                "REGLA 2 (ABSOLUTA): NUNCA compares la experiencia declarada en texto " +
+                "(frases tipo '+5 años', 'más de X años', 'experiencia senior en') contra la suma " +
+                "cronologica de los empleos. Ignora COMPLETAMENTE estas frases al evaluar. " +
+                "Si el perfil dice '+5 años' y la suma da 8, eso es CV desactualizado, NO inconsistencia.\n\n" +
+                "REGLA 3 (ABSOLUTA): NUNCA menciones ni asumas la fecha actual. No digas 'estamos en " +
+                "X año'. No calcules cuanto tiempo paso desde una fecha del CV hasta hoy. " +
+                "Las inconsistencias deben ser INTERNAS al CV.\n\n" +
+                "REGLA 4 (ABSOLUTA): NUNCA reportes solapamientos menores a 2 meses entre empleos.\n\n" +
+                "REGLA 5 (ABSOLUTA): NUNCA reportes trabajos simultaneos como inconsistencia, A MENOS " +
+                "QUE sean fisicamente imposibles (ej: dos full-time presenciales en ciudades " +
+                "distintas). Freelance, part-time, consultoria y proyectos paralelos son normales " +
+                "y NO se reportan.\n\n" +
+                "REGLA 6 (ABSOLUTA): NUNCA infieras, supongas ni calcules cosas que no esten " +
+                "escritas explicitamente en el CV.\n\n" +
+                "==================================================================\n" +
+                "AUTO-CHECK ANTES DE INCLUIR UN HALLAZGO:\n" +
+                "==================================================================\n\n" +
+                "Antes de agregar un hallazgo, preguntate:\n" +
+                "- ¿Estoy reportando una diferencia menor a 3 meses? → DESCARTAR\n" +
+                "- ¿Estoy comparando experiencia declarada contra suma cronologica? → DESCARTAR\n" +
+                "- ¿Estoy usando la fecha actual? → DESCARTAR\n" +
+                "- ¿Estoy reportando un solapamiento menor a 2 meses? → DESCARTAR\n" +
+                "- ¿Estoy reportando trabajos simultaneos que son fisicamente posibles? → DESCARTAR\n" +
+                "- ¿Estoy infiriendo algo no escrito en el CV? → DESCARTAR\n\n" +
+                "Si pasa el auto-check, evaluar si es realmente relevante.\n\n" +
+                "==================================================================\n" +
+                "SI VALE LA PENA REPORTAR (despues del auto-check):\n" +
+                "==================================================================\n\n" +
+                "- Gaps SIN EXPLICACION de mas de 6 meses entre empleos consecutivos\n" +
+                "- Saltos de seniority bruscos sin experiencia que lo justifique\n" +
+                "- Fechas INTERNAMENTE imposibles (ej: empleo termina antes de empezar)\n" +
+                "- Solapamientos largos (>2 meses) entre roles fisicamente incompatibles\n" +
+                "- Habilidades tecnicas avanzadas que no aparecen en ninguna experiencia\n" +
+                "- Logros con numeros sospechosamente especificos sin contexto\n" +
+                "- Titulos o instituciones vagas o no verificables\n" +
+                "- Contradicciones internas reales (datos del CV que se contradicen entre si)\n\n" +
+                "==================================================================\n" +
+                "FORMATO DE RESPUESTA:\n" +
+                "==================================================================\n\n" +
+                "Para cada hallazgo RELEVANTE que paso el auto-check:\n" +
+                "- category: string corto\n" +
+                "- description: explicacion clara citando datos del CV. PROHIBIDO mencionar fecha actual. " +
+                "PROHIBIDO mencionar '+X años' del perfil. PROHIBIDO mencionar diferencias menores a 3 meses.\n" +
+                "- riskLevel: \"ALTO\", \"MEDIO\" o \"BAJO\"\n" +
+                "- suggestedQuestion: pregunta para validar en entrevista\n\n" +
+                "Incluir \"summary\" de 2-3 oraciones. Si no hay nada relevante, summary positivo y " +
+                "findings vacio.\n\n" +
+                "Responde UNICAMENTE con JSON valido:\n" +
+                "{\"findings\": [...], \"summary\": \"...\"}\n" +
+                "</instrucciones>\n\n" +
+                "<cv>\n" + cvText + "\n</cv>\n\n" +
+                "<tarea>\n" +
+                "Analiza el CV. Aplica el auto-check a cada hallazgo potencial. Ante CUALQUIER duda, " +
+                "NO reportes. Es mejor reportar nada que reportar falsos positivos.\n" +
+                "</tarea>";
+        }
 
     private static string QuestionsPrompt(string jobDescription, string cvText)
     {
