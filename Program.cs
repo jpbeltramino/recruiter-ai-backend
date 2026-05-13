@@ -22,6 +22,7 @@ builder.Services.AddSingleton<ClaudeService>();
 builder.Services.AddSingleton<CvParserService>();
 builder.Services.AddSingleton<RateLimitService>();
 builder.Services.AddSingleton<FileValidationService>();
+builder.Services.AddSingleton<JobService>();
 
 // CORS — allow all origins for development
 builder.Services.AddCors(options =>

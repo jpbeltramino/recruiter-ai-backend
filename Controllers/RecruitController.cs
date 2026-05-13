@@ -11,13 +11,14 @@ public class RecruitController(
     ClaudeService claude,
     CvParserService parser,
     FileValidationService validator,
+    JobService jobService,
     ILogger<RecruitController> logger) : ControllerBase
 {
     private readonly ClaudeService _claude = claude;
     private readonly CvParserService _parser = parser;
     private readonly ILogger<RecruitController> _logger = logger;
-
     private readonly FileValidationService _validator = validator;
+    private readonly JobService _jobService = jobService;
 
     // ─── 1. RANKEADOR DE CVs ─────────────────────────────────────────────────
 
@@ -318,5 +319,85 @@ public class RecruitController(
         });
         await Response.WriteAsync($"data: {json}\n\n");
         await Response.Body.FlushAsync();
+    }
+
+    [HttpPost("analyze-job")]
+    public IActionResult StartAnalysisJob([FromBody] UnifiedAnalysisRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.JobDescription))
+            return BadRequest(new { error = "La descripción del puesto es obligatoria." });
+
+        if (request.Candidates == null || request.Candidates.Count == 0)
+            return BadRequest(new { error = "Debe proporcionar al menos un candidato." });
+
+        try
+        {
+            _validator.ValidateCandidateCount(request.Candidates.Count);
+
+            var resolved = new List<(string Name, string CvText)>();
+            foreach (var candidate in request.Candidates)
+            {
+                if (string.IsNullOrWhiteSpace(candidate.Name))
+                    return BadRequest(new { error = "Cada candidato debe tener un nombre." });
+
+                if (!string.IsNullOrWhiteSpace(candidate.PdfBase64))
+                    _validator.ValidatePdfBase64(candidate.PdfBase64, candidate.Name);
+
+                var text = _parser.Resolve(candidate.Text, candidate.PdfBase64);
+                text = _validator.TruncateText(text);
+                resolved.Add((candidate.Name, text));
+            }
+
+            var job = _jobService.CreateJob(resolved.Count);
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var results = await _claude.AnalyzeCandidatesWithJobAsync(
+                        request.JobDescription,
+                        resolved,
+                        job.Id,
+                        _jobService
+                    );
+
+                    var ordered = results.OrderByDescending(c => c.Score).ToList();
+                    _jobService.CompleteJob(job.Id, ordered);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error procesando job {JobId}", job.Id);
+                    _jobService.FailJob(job.Id, ex.Message);
+                }
+            });
+
+            return Ok(new JobStartedResponse(job.Id));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error iniciando job");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("jobs/{jobId}")]
+    public IActionResult GetJobStatus(string jobId)
+    {
+        var job = _jobService.GetJob(jobId);
+        if (job == null)
+            return NotFound(new { error = "Job no encontrado o expirado." });
+
+        return Ok(new JobStatusResponse(
+            Id: job.Id,
+            Status: job.Status,
+            Current: job.Current,
+            Total: job.Total,
+            Results: job.Results,
+            Error: job.Error
+        ));
     }
 }

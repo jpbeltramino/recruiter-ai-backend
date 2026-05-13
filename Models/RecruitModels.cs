@@ -123,3 +123,25 @@ public record ProgressEvent(
     UnifiedCandidateResult? Candidate
 );
 
+public class AnalysisJob
+{
+    public string Id { get; set; } = string.Empty;
+    public string Status { get; set; } = "running";
+    public int Current { get; set; }
+    public int Total { get; set; }
+    public List<UnifiedCandidateResult> Results { get; set; } = new();
+    public string? Error { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public record JobStartedResponse(string JobId);
+
+public record JobStatusResponse(
+    string Id,
+    string Status,
+    int Current,
+    int Total,
+    List<UnifiedCandidateResult> Results,
+    string? Error
+);

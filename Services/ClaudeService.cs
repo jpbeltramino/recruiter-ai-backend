@@ -476,4 +476,71 @@ public class ClaudeService
 
         return results;
     }
+
+    public async Task<List<UnifiedCandidateResult>> AnalyzeCandidatesWithJobAsync(
+    string jobDescription,
+    List<(string Name, string CvText)> candidates,
+    string jobId,
+    JobService jobService)
+    {
+        _logger.LogInformation(
+            "Job {JobId}: Procesando {Count} candidatos (lotes de {BatchSize})",
+            jobId, candidates.Count, _batchSize);
+
+        var results = new List<UnifiedCandidateResult>();
+        var completedCount = 0;
+        var lockObj = new object();
+
+        var batches = candidates
+            .Select((c, i) => new { Candidate = c, Index = i })
+            .GroupBy(x => x.Index / _batchSize)
+            .Select(g => g.Select(x => x.Candidate).ToList())
+            .ToList();
+
+        for (int i = 0; i < batches.Count; i++)
+        {
+            var batch = batches[i];
+
+            var tasks = batch.Select(async candidate =>
+            {
+                UnifiedCandidateResult result;
+                try
+                {
+                    result = await AnalyzeCandidateFullAsync(jobDescription, candidate.Name, candidate.CvText);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Job {JobId}: Error en candidato {Name}", jobId, candidate.Name);
+                    result = new UnifiedCandidateResult(
+                        Name: candidate.Name,
+                        Score: 0,
+                        Strengths: new List<string>(),
+                        Weaknesses: new List<string> { "Error al procesar este candidato" },
+                        Verdict: "DESCARTAR",
+                        Inconsistencies: new DetectInconsistenciesResponse(new List<InconsistencyFinding>(), string.Empty),
+                        Questions: new GenerateQuestionsResponse(new List<InterviewQuestion>(), new List<InterviewQuestion>(), new List<InterviewQuestion>()),
+                        HasDeepAnalysis: false
+                    );
+                }
+
+                int currentCount;
+                lock (lockObj)
+                {
+                    results.Add(result);
+                    completedCount++;
+                    currentCount = completedCount;
+                }
+
+                jobService.UpdateProgress(jobId, currentCount, result);
+                return result;
+            });
+
+            await Task.WhenAll(tasks);
+
+            if (i < batches.Count - 1)
+                await Task.Delay(_delayBetweenBatchesMs);
+        }
+
+        return results;
+    }
 }
