@@ -116,3 +116,10 @@ public record DeepAnalysisResponse(
     GenerateQuestionsResponse Questions
 );
 
+public record ProgressEvent(
+    string Type,
+    int Current,
+    int Total,
+    UnifiedCandidateResult? Candidate
+);
+

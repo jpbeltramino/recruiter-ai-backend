@@ -410,4 +410,70 @@ public class ClaudeService
 
         return results;
     }
+
+    public async Task<List<UnifiedCandidateResult>> AnalyzeCandidatesParallelWithProgressAsync(
+    string jobDescription,
+    List<(string Name, string CvText)> candidates,
+    Func<UnifiedCandidateResult, int, Task> onCandidateCompleted)
+    {
+        _logger.LogInformation(
+            "Procesando {Count} candidatos con progreso (lotes de {BatchSize})",
+            candidates.Count, _batchSize);
+
+        var results = new List<UnifiedCandidateResult>();
+        var completedCount = 0;
+        var lockObj = new object();
+
+        var batches = candidates
+            .Select((c, i) => new { Candidate = c, Index = i })
+            .GroupBy(x => x.Index / _batchSize)
+            .Select(g => g.Select(x => x.Candidate).ToList())
+            .ToList();
+
+        for (int i = 0; i < batches.Count; i++)
+        {
+            var batch = batches[i];
+
+            var tasks = batch.Select(async candidate =>
+            {
+                UnifiedCandidateResult result;
+                try
+                {
+                    result = await AnalyzeCandidateFullAsync(jobDescription, candidate.Name, candidate.CvText);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error analizando candidato {Name}", candidate.Name);
+                    result = new UnifiedCandidateResult(
+                        Name: candidate.Name,
+                        Score: 0,
+                        Strengths: [],
+                        Weaknesses: ["Error al procesar este candidato"],
+                        Verdict: "DESCARTAR",
+                        Inconsistencies: new DetectInconsistenciesResponse([], string.Empty),
+                        Questions: new GenerateQuestionsResponse([], [], []),
+                        HasDeepAnalysis: false
+                    );
+                }
+
+                int currentCount;
+                lock (lockObj)
+                {
+                    results.Add(result);
+                    completedCount++;
+                    currentCount = completedCount;
+                }
+
+                await onCandidateCompleted(result, currentCount);
+                return result;
+            });
+
+            await Task.WhenAll(tasks);
+
+            if (i < batches.Count - 1)
+                await Task.Delay(_delayBetweenBatchesMs);
+        }
+
+        return results;
+    }
 }

@@ -222,4 +222,101 @@ public class RecruitController(
     {
         return Ok(new { valid = true });
     }
+
+    [HttpPost("analyze-unified-stream")]
+    public async Task AnalyzeUnifiedStream([FromBody] UnifiedAnalysisRequest request)
+    {
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Connection", "keep-alive");
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        if (string.IsNullOrWhiteSpace(request.JobDescription))
+        {
+            await WriteEventAsync(new { type = "error", message = "La descripción del puesto es obligatoria." });
+            return;
+        }
+
+        if (request.Candidates == null || request.Candidates.Count == 0)
+        {
+            await WriteEventAsync(new { type = "error", message = "Debe proporcionar al menos un candidato." });
+            return;
+        }
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _logger.LogInformation("AnalyzeUnifiedStream iniciado con {CandidateCount} candidatos",
+            request.Candidates.Count);
+
+        try
+        {
+            _validator.ValidateCandidateCount(request.Candidates.Count);
+
+            var resolved = new List<(string Name, string CvText)>();
+            foreach (var candidate in request.Candidates)
+            {
+                if (string.IsNullOrWhiteSpace(candidate.Name))
+                {
+                    await WriteEventAsync(new { type = "error", message = "Cada candidato debe tener un nombre." });
+                    return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(candidate.PdfBase64))
+                    _validator.ValidatePdfBase64(candidate.PdfBase64, candidate.Name);
+
+                var text = _parser.Resolve(candidate.Text, candidate.PdfBase64);
+                text = _validator.TruncateText(text);
+                resolved.Add((candidate.Name, text));
+            }
+
+            await WriteEventAsync(new
+            {
+                type = "start",
+                total = resolved.Count
+            });
+
+            var results = await _claude.AnalyzeCandidatesParallelWithProgressAsync(
+                request.JobDescription,
+                resolved,
+                async (result, current) =>
+                {
+                    await WriteEventAsync(new
+                    {
+                        type = "progress",
+                        current,
+                        total = resolved.Count,
+                        candidateName = result.Name
+                    });
+                }
+            );
+
+            await WriteEventAsync(new
+            {
+                type = "complete",
+                candidates = results.OrderByDescending(c => c.Score).ToList()
+            });
+
+            _logger.LogInformation("AnalyzeUnifiedStream completado en {ElapsedMs}ms para {CandidateCount} candidatos",
+                sw.ElapsedMilliseconds, request.Candidates.Count);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Validación falló en stream: {Message}", ex.Message);
+            await WriteEventAsync(new { type = "error", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en AnalyzeUnifiedStream después de {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            await WriteEventAsync(new { type = "error", message = ex.Message });
+        }
+    }
+
+    private async Task WriteEventAsync(object data)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        });
+        await Response.WriteAsync($"data: {json}\n\n");
+        await Response.Body.FlushAsync();
+    }
 }
