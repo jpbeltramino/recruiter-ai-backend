@@ -401,10 +401,4 @@ public class RecruitController(
             Error: job.Error
         ));
     }
-
-    [HttpGet("test-sentry")]
-    public IActionResult TestSentry()
-    {
-        throw new Exception("Test de Sentry - este error debería aparecer en el dashboard");
-    }
 }
