@@ -1,5 +1,6 @@
 using RecruiterAI.Services;
 using Serilog;
+using Sentry;
 using Sentry.AspNetCore;
 
 Log.Logger = new LoggerConfiguration()
