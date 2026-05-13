@@ -1,5 +1,6 @@
 using RecruiterAI.Services;
 using Serilog;
+using Sentry.AspNetCore;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -12,6 +13,16 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.UseSentry(options =>
+{
+    options.Dsn = builder.Configuration["Sentry:Dsn"] ?? string.Empty;
+    options.Environment = builder.Environment.EnvironmentName;
+    options.TracesSampleRate = 0.2;
+    options.MinimumEventLevel = LogLevel.Warning;
+    options.AttachStacktrace = true;
+    options.SendDefaultPii = false;
+});
 
 builder.Host.UseSerilog();
 builder.Services.AddControllers();
