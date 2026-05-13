@@ -86,7 +86,8 @@ public record ErrorResponse(string Error);
 
 public record UnifiedAnalysisRequest(
     string JobDescription,
-    List<CvInput> Candidates
+    List<CvInput> Candidates,
+    string Mode = "smart"
 );
 
 public record UnifiedCandidateResult(

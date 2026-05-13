@@ -291,52 +291,59 @@ public class ClaudeService
     }
 
 
-    public async Task<UnifiedCandidateResult> AnalyzeCandidateFullAsync(
-    string jobDescription,
-    string name,
-    string cvText)
+ public async Task<UnifiedCandidateResult> AnalyzeCandidateFullAsync(
+        string jobDescription,
+        string name,
+        string cvText,
+        string mode = "smart")
+    {
+        var rankResult = await RankCvsAsync(jobDescription, new List<(string, string)> { (name, cvText) });
+        var ranking = rankResult.Rankings.First();
+
+        bool shouldRunDeep = mode switch
         {
-            var rankResult = await RankCvsAsync(jobDescription, new List<(string, string)> { (name, cvText) });
-            var ranking = rankResult.Rankings.First();
+            "ranking" => false,
+            "full" => true,
+            _ => ranking.Score >= 7
+        };
 
-            if (ranking.Score < 7)
-            {
-                return new UnifiedCandidateResult(
-                    Name: name,
-                    Score: ranking.Score,
-                    Strengths: ranking.Strengths,
-                    Weaknesses: ranking.Weaknesses,
-                    Verdict: ranking.Verdict,
-                    Inconsistencies: new DetectInconsistenciesResponse(
-                        new List<InconsistencyFinding>(),
-                        string.Empty
-                    ),
-                    Questions: new GenerateQuestionsResponse(
-                        new List<InterviewQuestion>(),
-                        new List<InterviewQuestion>(),
-                        new List<InterviewQuestion>()
-                    ),
-                    HasDeepAnalysis: false
-                );
-            }
-
-            await Task.Delay(500);
-            var inconsResult = await DetectInconsistenciesAsync(cvText);
-            await Task.Delay(500);
-            var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
-
+        if (!shouldRunDeep)
+        {
             return new UnifiedCandidateResult(
                 Name: name,
                 Score: ranking.Score,
                 Strengths: ranking.Strengths,
                 Weaknesses: ranking.Weaknesses,
                 Verdict: ranking.Verdict,
-                Inconsistencies: inconsResult,
-                Questions: questResult,
-                HasDeepAnalysis: true
+                Inconsistencies: new DetectInconsistenciesResponse(
+                    new List<InconsistencyFinding>(),
+                    string.Empty
+                ),
+                Questions: new GenerateQuestionsResponse(
+                    new List<InterviewQuestion>(),
+                    new List<InterviewQuestion>(),
+                    new List<InterviewQuestion>()
+                ),
+                HasDeepAnalysis: false
             );
         }
 
+        await Task.Delay(500);
+        var inconsResult = await DetectInconsistenciesAsync(cvText);
+        await Task.Delay(500);
+        var questResult = await GenerateQuestionsAsync(jobDescription, cvText);
+
+        return new UnifiedCandidateResult(
+            Name: name,
+            Score: ranking.Score,
+            Strengths: ranking.Strengths,
+            Weaknesses: ranking.Weaknesses,
+            Verdict: ranking.Verdict,
+            Inconsistencies: inconsResult,
+            Questions: questResult,
+            HasDeepAnalysis: true
+        );
+    }
         public async Task<List<UnifiedCandidateResult>> AnalyzeCandidatesParallelAsync(
     string jobDescription,
     List<(string Name, string CvText)> candidates)
@@ -481,11 +488,12 @@ public class ClaudeService
     string jobDescription,
     List<(string Name, string CvText)> candidates,
     string jobId,
-    JobService jobService)
+    JobService jobService,
+    string mode = "smart")
     {
         _logger.LogInformation(
-            "Job {JobId}: Procesando {Count} candidatos (lotes de {BatchSize})",
-            jobId, candidates.Count, _batchSize);
+            "Job {JobId}: Procesando {Count} candidatos en modo {Mode} (lotes de {BatchSize})",
+            jobId, candidates.Count, mode, _batchSize);
 
         var results = new List<UnifiedCandidateResult>();
         var completedCount = 0;
@@ -506,7 +514,7 @@ public class ClaudeService
                 UnifiedCandidateResult result;
                 try
                 {
-                    result = await AnalyzeCandidateFullAsync(jobDescription, candidate.Name, candidate.CvText);
+                    result = await AnalyzeCandidateFullAsync(jobDescription, candidate.Name, candidate.CvText, mode);
                 }
                 catch (Exception ex)
                 {

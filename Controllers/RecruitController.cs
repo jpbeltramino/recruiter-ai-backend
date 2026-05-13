@@ -358,7 +358,8 @@ public class RecruitController(
                         request.JobDescription,
                         resolved,
                         job.Id,
-                        _jobService
+                        _jobService,
+                        request.Mode
                     );
 
                     var ordered = results.OrderByDescending(c => c.Score).ToList();
