@@ -85,6 +85,8 @@ app.Use(async (context, next) =>
     }
     catch (Exception ex)
     {
+        SentrySdk.CaptureException(ex);
+
         context.Response.StatusCode = 500;
         context.Response.ContentType = "application/json";
         var error = System.Text.Json.JsonSerializer.Serialize(new { error = ex.Message });
