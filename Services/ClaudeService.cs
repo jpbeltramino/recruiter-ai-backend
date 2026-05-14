@@ -93,56 +93,78 @@ public class ClaudeService
             $"Fecha actual: {currentMonth} {currentYear}.\n\n" +
             "Sos experto en reclutamiento. Evaluá candidatos para el puesto.\n\n" +
             "==================================================================\n" +
-            "CÓMO CALCULAR AÑOS DE EXPERIENCIA — DOS NÚMEROS DISTINTOS:\n" +
+            "REGLA FUNDAMENTAL — CÓMO CONTAR AÑOS DE EXPERIENCIA:\n" +
             "==================================================================\n\n" +
-            "Para cada candidato, calculá DOS valores:\n\n" +
-            "1. EXPERIENCIA TOTAL: desde la fecha del primer empleo hasta hoy.\n" +
-            $"   Ej: primer empleo en Oct 2017 → {currentYear - 2017} años de experiencia total.\n\n" +
-            "2. EXPERIENCIA RELEVANTE: solo los empleos que aplican al puesto buscado.\n" +
-            "   Identificá qué skills/roles pide el puesto y contá SOLO los empleos donde el " +
-            "candidato trabajó en esos skills o roles directamente relacionados.\n" +
-            "   Trabajos en áreas completamente distintas al puesto NO cuentan como experiencia " +
-            "relevante.\n\n" +
+            "Para CADA tecnología/rol requerido, calculás los años así:\n\n" +
+            "1. Identificá TODOS los empleos donde el candidato usó esa tecnología/rol.\n" +
+            "2. Tomá la fecha de INICIO más antigua entre esos empleos.\n" +
+            "3. Tomá la fecha de FIN más reciente (o hoy si sigue trabajando).\n" +
+            "4. Calculá la diferencia. ESE ES el número de años de experiencia.\n\n" +
             "==================================================================\n" +
-            "QUÉ NÚMERO USAR PARA EVALUAR:\n" +
+            "PROHIBIDO ABSOLUTAMENTE:\n" +
             "==================================================================\n\n" +
-            "El score se basa en la EXPERIENCIA RELEVANTE, no en la total.\n\n" +
-            "Ejemplos generales:\n" +
-            "- Puesto pide 8 años de [skill X], candidato tiene 8 años de [skill X] → cumple\n" +
-            "- Puesto pide 8 años de [skill X], candidato tiene 5 años de [skill X] + 10 años en " +
-            "otro rol no relacionado → NO cumple (5 años relevantes, no 15)\n" +
-            "- Puesto pide 5 años de [skill X], candidato tiene 8 años de [skill Y] → NO cumple " +
-            "(skills distintos, no son intercambiables)\n" +
-            "- Puesto pide [skill X], candidato tiene experiencia en [skill X] desde hace 4 años " +
-            "trabajando en paralelo con otros roles → cuentan los 4 años de [skill X], independiente " +
-            "de la duración de los otros roles.\n\n" +
-            "IGNORÁ totalmente:\n" +
-            "- Frases como '+5 años' o 'más de X años' del perfil profesional " +
-            "(suelen ser textos no actualizados).\n" +
-            "- Trabajos simultáneos: NO restan experiencia. Si dos empleos relevantes corren " +
-            "en paralelo, cuentan como un solo período (no se suman, pero tampoco se restan).\n\n" +
+            "- PROHIBIDO restar tiempo porque hay empleos en paralelo. Si trabajó como .NET dev " +
+            "en dos empresas a la vez durante 2020-2024, esos 4 años cuentan como 4 años, NO se " +
+            "dividen, NO se restan, NO se ajustan.\n\n" +
+            "- PROHIBIDO usar conceptos como 'dedicación concentrada', 'tiempo efectivo', " +
+            "'experiencia neta'. Solo existe: fecha inicio → fecha fin. Punto.\n\n" +
+            "- PROHIBIDO inventar dos números distintos para el mismo candidato. La cantidad de " +
+            "años es UN solo número.\n\n" +
+            "- PROHIBIDO contradecir en strengths y weaknesses. Si en strengths decís '9 años', " +
+            "en weaknesses NO podés decir 'solo 5-6 años reales'. UN solo número, coherente en toda " +
+            "la respuesta.\n\n" +
             "==================================================================\n" +
-            "CÓMO ASIGNAR EL SCORE:\n" +
+            "EJEMPLO CONCRETO:\n" +
             "==================================================================\n\n" +
-            "Comparás EXPERIENCIA RELEVANTE contra requisitos del puesto.\n\n" +
+            "Candidato con estos empleos:\n" +
+            "- Empresa A (.NET Dev): Oct 2017 – Ago 2019\n" +
+            "- Empresa B (.NET Dev): Oct 2019 – Nov 2024\n" +
+            "- Empresa C (.NET Dev): Dic 2020 – Actualidad\n\n" +
+            "Cálculo correcto:\n" +
+            "- Fecha inicio más antigua de .NET: Oct 2017\n" +
+            "- Fecha fin más reciente: hoy\n" +
+            $"- Experiencia en .NET: {currentYear - 2017} años\n\n" +
+            "NO importa que B y C se solapen. NO se restan los 4 años de solape. " +
+            $"Son {currentYear - 2017} años de .NET. Punto.\n\n" +
+            "==================================================================\n" +
+            "EXPERIENCIA RELEVANTE vs TOTAL:\n" +
+            "==================================================================\n\n" +
+            "Solo contás como experiencia relevante los empleos donde usó la tecnología/rol pedido.\n" +
+            "Si fue repositor 5 años + .NET dev 8 años, tiene 8 años de .NET, no 13.\n\n" +
+            "Pero dentro de los empleos relevantes, los solapamientos NO restan (regla anterior).\n\n" +
+            "==================================================================\n" +
+            "IGNORAR:\n" +
+            "==================================================================\n\n" +
+            "- Frases como '+5 años' del perfil profesional (suelen estar desactualizadas)\n" +
+            "- Calcular siempre desde las fechas reales de los empleos\n\n" +
+            "==================================================================\n" +
+            "SCORE:\n" +
+            "==================================================================\n\n" +
             "Score 9-10: cumple todos los requisitos y excede en algo importante\n" +
             "Score 7-8: cumple todos los requisitos ajustadamente\n" +
-            "Score 5-6: le falta algo importante (ej: pide 8 años relevantes, tiene 5)\n" +
+            "Score 5-6: le falta algo importante\n" +
             "Score 3-4: le faltan varios requisitos\n" +
             "Score 1-2: no cumple los básicos\n\n" +
-            "Si la experiencia RELEVANTE no llega a los años solicitados → score < 7 (sin excepciones).\n\n" +
+            "Si la experiencia relevante no llega a los años solicitados → score < 7.\n" +
+            "Si SÍ llega → score >= 7. No bajes el score inventando ajustes.\n\n" +
             "Veredictos:\n" +
             "- AVANZAR: score >= 7\n" +
             "- REVISAR: score 5-6\n" +
             "- DESCARTAR: score <= 4\n\n" +
+            "==================================================================\n" +
+            "VALIDACIÓN ANTES DE RESPONDER:\n" +
+            "==================================================================\n\n" +
+            "1. ¿Resté años por empleos en paralelo? → si SÍ, REHACER el cálculo\n" +
+            "2. ¿Strengths y weaknesses mencionan números de años distintos? → si SÍ, CORREGIR\n" +
+            "3. ¿Inventé conceptos como 'dedicación concentrada'? → si SÍ, ELIMINAR\n\n" +
             "==================================================================\n" +
             "FORMATO JSON:\n" +
             "==================================================================\n\n" +
             "Por candidato:\n" +
             "- name: string\n" +
             "- score: entero 1-10\n" +
-            "- strengths: 3 strings concretos (que reflejen experiencia RELEVANTE al puesto)\n" +
-            "- weaknesses: 2 strings concretos (brechas reales respecto al puesto)\n" +
+            "- strengths: 3 strings concretos\n" +
+            "- weaknesses: 2 strings concretos (deben ser coherentes con strengths)\n" +
             "- verdict: AVANZAR | REVISAR | DESCARTAR\n\n" +
             "Respondé SOLO con: {\"rankings\": [...]}\n\n" +
             "<puesto>\n" + jobDescription + "\n</puesto>\n\n" +
