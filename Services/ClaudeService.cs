@@ -86,118 +86,107 @@ public class ClaudeService
 
     private static string RankCvsPrompt(string jobDescription, string candidatesXml)
     {
-        return
-            "<instrucciones>\n" +
-            "Sos un experto en reclutamiento y seleccion de personal con 15 anos de experiencia.\n" +
-            "Tu tarea es evaluar y rankear candidatos para un puesto especifico.\n\n" +
-            "Para CADA candidato devuelve un objeto JSON con exactamente estos campos:\n" +
-            "- name: string (nombre del candidato)\n" +
-            "- score: numero entero del 1 al 10\n" +
-            "- strengths: array de exactamente 3 strings (puntos fuertes)\n" +
-            "- weaknesses: array de exactamente 2 strings (debilidades)\n" +
-            "- verdict: string, UNO de estos valores exactos: \"AVANZAR\", \"REVISAR\", \"DESCARTAR\"\n\n" +
-            "Criterios de veredicto:\n" +
-            "- AVANZAR: score >= 7, candidato claramente apto\n" +
-            "- REVISAR: score 5-6, hay dudas pero merece evaluacion\n" +
-            "- DESCARTAR: score <= 4, no cumple requisitos minimos\n\n" +
-            "Responde UNICAMENTE con un JSON valido, sin texto adicional, sin markdown:\n" +
-            "{\"rankings\": [...]}\n" +
-            "</instrucciones>\n\n" +
-            "<puesto>\n" + jobDescription + "\n</puesto>\n\n" +
-            "<candidatos>\n" + candidatesXml + "\n</candidatos>\n\n" +
-            "<tarea>\n" +
-            "Evalua cada candidato contra el puesto. Se objetivo y especifico.\n" +
-            "Los puntos fuertes y debiles deben ser concretos y relevantes al puesto.\n" +
-            "Responde SOLO con el JSON pedido.\n" +
-            "</tarea>";
-    }
-
-    private static string InconsistenciasPrompt(string cvText)
-    {
         var currentDate = DateTime.UtcNow.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-AR"));
         var currentYear = DateTime.UtcNow.Year;
 
         return
             "<contexto>\n" +
-            $"La fecha actual es {currentDate} ({currentYear}). Si necesitás referenciar 'hoy', " +
-            $"usá esta fecha como referencia INTERNA solamente. NO la menciones en tus respuestas.\n" +
+            $"Fecha actual: {currentDate} ({currentYear}). " +
+            $"Para calcular experiencia: desde la fecha de inicio del primer empleo hasta hoy. " +
+            $"Ej: si trabaja desde febrero 2021, tiene aprox {currentYear - 2021} años.\n" +
             "</contexto>\n\n" +
             "<instrucciones>\n" +
-            "Sos un experto en verificacion de antecedentes laborales. Tu objetivo es detectar " +
-            "inconsistencias REALES y RELEVANTES en el CV.\n\n" +
+            "Sos experto en reclutamiento. Evalúa y rankea candidatos para el puesto.\n\n" +
+            "Devolvé un JSON por candidato con:\n" +
+            "- name: string\n" +
+            "- score: entero 1-10\n" +
+            "- strengths: 3 strings (puntos fuertes concretos y relevantes al puesto)\n" +
+            "- weaknesses: 2 strings (debilidades reales respecto al puesto)\n" +
+            "- verdict: \"AVANZAR\" | \"REVISAR\" | \"DESCARTAR\"\n\n" +
             "==================================================================\n" +
-            "REGLAS ABSOLUTAS — VIOLAR CUALQUIERA ES UN ERROR GRAVE:\n" +
+            "CÓMO ASIGNAR EL SCORE:\n" +
             "==================================================================\n\n" +
-            "REGLA 1 (ABSOLUTA): NUNCA reportes diferencias de duracion menores a 3 meses. " +
-            "Esto es INNEGOCIABLE. Si el CV dice '5 años 2 meses' y tu cuenta da '5 años 1 mes', " +
-            "NO lo reportes. No agregues ningun 'pero', 'aunque', 'sin embargo' para reportarlo igual. " +
-            "Si la diferencia es menor a 3 meses, la inconsistencia NO existe.\n\n" +
-            "REGLA 2 (ABSOLUTA): NUNCA compares la experiencia declarada en texto " +
-            "(frases tipo '+5 años', 'más de X años', 'experiencia senior en') contra la suma " +
-            "cronologica de los empleos. Ignora COMPLETAMENTE estas frases al evaluar. " +
-            "Si el perfil dice '+5 años' y la suma da 8, eso es CV desactualizado, NO inconsistencia.\n\n" +
-            "REGLA 3 (ABSOLUTA): NUNCA menciones la fecha actual en tu respuesta. " +
-            "Las inconsistencias deben ser INTERNAS al CV.\n\n" +
-            "REGLA 4 (ABSOLUTA): NUNCA reportes solapamientos menores a 2 meses entre empleos.\n" +
-            "VERIFICACIÓN OBLIGATORIA antes de reportar un solapamiento:\n" +
-            "  1. Tomá la fecha de FIN del empleo anterior\n" +
-            "  2. Tomá la fecha de INICIO del empleo siguiente\n" +
-            "  3. Si la diferencia es ≤ 2 meses → NO es solapamiento, NO reportar\n" +
-            "  4. Si las fechas coinciden o se tocan en el mismo mes → NO es solapamiento, NO reportar\n" +
-            "Ejemplos:\n" +
-            "  - Empleo A: Ago 2019 – Oct 2019 / Empleo B: Oct 2019 – ... → NO HAY SOLAPAMIENTO (transición)\n" +
-            "  - Empleo A: Ene 2020 – Dic 2022 / Empleo B: Ene 2023 – ... → NO HAY SOLAPAMIENTO\n" +
-            "  - Empleo A: Ene 2020 – Jun 2023 / Empleo B: Ene 2023 – ... → SI HAY SOLAPAMIENTO (6 meses)\n\n" +
-            "REGLA 5 (ABSOLUTA): NUNCA reportes trabajos simultaneos como inconsistencia, A MENOS " +
-            "QUE sean fisicamente imposibles (ej: dos full-time presenciales en ciudades " +
-            "distintas). Freelance, part-time, consultoria y proyectos paralelos son normales.\n\n" +
-            "REGLA 6 (ABSOLUTA): NUNCA infieras, supongas ni calcules cosas que no esten " +
-            "escritas explicitamente en el CV. Si tenés dudas sobre fechas exactas, NO reportes.\n\n" +
-            "REGLA 7 (ABSOLUTA): Antes de reportar cualquier solapamiento, verificá las fechas " +
-            "DOS VECES leyendo el CV literalmente. No inventes ni mezcles fechas de distintos empleos.\n\n" +
-            "==================================================================\n" +
-            "AUTO-CHECK ANTES DE INCLUIR UN HALLAZGO:\n" +
-            "==================================================================\n\n" +
-            "Antes de agregar un hallazgo, preguntate:\n" +
-            "- ¿Estoy reportando una diferencia menor a 3 meses? → DESCARTAR\n" +
-            "- ¿Estoy comparando experiencia declarada contra suma cronologica? → DESCARTAR\n" +
-            "- ¿Estoy mencionando la fecha actual? → DESCARTAR\n" +
-            "- ¿El 'solapamiento' es menor a 2 meses o son meses que se tocan? → DESCARTAR\n" +
-            "- ¿Verifiqué las fechas exactas leyendo el CV literal? → si NO, DESCARTAR\n" +
-            "- ¿Estoy reportando trabajos simultaneos que son fisicamente posibles? → DESCARTAR\n" +
-            "- ¿Estoy infiriendo algo no escrito en el CV? → DESCARTAR\n\n" +
-            "==================================================================\n" +
-            "SI VALE LA PENA REPORTAR (despues del auto-check):\n" +
-            "==================================================================\n\n" +
-            "- Gaps SIN EXPLICACION de mas de 6 meses entre empleos consecutivos\n" +
-            "- Saltos de seniority bruscos sin experiencia que lo justifique\n" +
-            "- Fechas INTERNAMENTE imposibles (ej: empleo termina antes de empezar)\n" +
-            "- Solapamientos largos VERIFICADOS (>2 meses) entre roles fisicamente incompatibles\n" +
-            "- Habilidades tecnicas avanzadas que no aparecen en ninguna experiencia\n" +
-            "- Logros con numeros sospechosamente especificos sin contexto\n" +
-            "- Titulos o instituciones vagas o no verificables\n" +
-            "- Contradicciones internas reales (datos del CV que se contradicen entre si)\n\n" +
-            "==================================================================\n" +
-            "FORMATO DE RESPUESTA:\n" +
-            "==================================================================\n\n" +
-            "Para cada hallazgo RELEVANTE que paso el auto-check:\n" +
-            "- category: string corto\n" +
-            "- description: explicacion clara citando datos EXACTOS del CV. " +
-            "PROHIBIDO mencionar fecha actual. PROHIBIDO mencionar '+X años' del perfil. " +
-            "PROHIBIDO mencionar diferencias menores a 3 meses. " +
-            "PROHIBIDO mezclar fechas de distintos empleos.\n" +
-            "- riskLevel: \"ALTO\", \"MEDIO\" o \"BAJO\"\n" +
-            "- suggestedQuestion: pregunta para validar en entrevista\n\n" +
-            "Incluir \"summary\" de 2-3 oraciones. Si no hay nada relevante, summary positivo y " +
-            "findings vacio.\n\n" +
-            "Responde UNICAMENTE con JSON valido:\n" +
-            "{\"findings\": [...], \"summary\": \"...\"}\n" +
+            "Identificá los REQUISITOS EXCLUYENTES del puesto (años de experiencia, " +
+            "tecnologías específicas, certificaciones, idiomas).\n\n" +
+            "REGLA CLAVE: el score debe REFLEJAR el grado de cumplimiento de los requisitos.\n\n" +
+            "- Cumple todos los requisitos excluyentes Y tiene experiencia adicional valiosa → 9-10\n" +
+            "- Cumple todos los requisitos excluyentes ajustadamente → 7-8\n" +
+            "- Cumple la mayoría pero le falta algo significativo (ej: pide 8 años y tiene 5) → 5-6\n" +
+            "- Le faltan varios requisitos excluyentes → 3-4\n" +
+            "- No cumple los requisitos básicos → 1-2\n\n" +
+            "IMPORTANTE: si un candidato no llega a los años de experiencia solicitados, " +
+            "el score NO puede ser 7 o más. Esa es una brecha significativa.\n\n" +
+            "Veredictos:\n" +
+            "- AVANZAR: score >= 7\n" +
+            "- REVISAR: score 5-6\n" +
+            "- DESCARTAR: score <= 4\n\n" +
+            "Responde SOLO con JSON válido, sin markdown:\n" +
+            "{\"rankings\": [...]}\n" +
             "</instrucciones>\n\n" +
+            "<puesto>\n" + jobDescription + "\n</puesto>\n\n" +
+            "<candidatos>\n" + candidatesXml + "\n</candidatos>\n\n" +
+            "Evaluá cada candidato. Identificá requisitos excluyentes del puesto y " +
+            "asigná el score según cuánto los cumple. Si no llega a los años pedidos, score < 7.";
+    }
+
+    private static string InconsistenciasPrompt(string cvText)
+    {
+        return
+            "Sos experto en verificación de CVs. Detectá inconsistencias REALES y RELEVANTES.\n\n" +
+            "==================================================================\n" +
+            "REGLAS CRÍTICAS:\n" +
+            "==================================================================\n\n" +
+            "1. SOLAPAMIENTOS: solo reportá si el solapamiento entre dos empleos es de MÁS DE 2 MESES " +
+            "calendario completos. Verificá las fechas DOS VECES leyendo literal del CV.\n" +
+            "Ejemplos:\n" +
+            "  • Empleo A: Ago 2019 – Oct 2019 / Empleo B: Oct 2019 – Dic 2024 → NO HAY SOLAPAMIENTO (transición)\n" +
+            "  • Empleo A: Mar 2020 – Dic 2020 / Empleo B: Dic 2020 – Actualidad → NO HAY SOLAPAMIENTO (mismo mes de cierre/apertura)\n" +
+            "  • Empleo A: Ene 2020 – Dic 2022 / Empleo B: Ene 2023 – Actualidad → NO HAY SOLAPAMIENTO\n" +
+            "  • Empleo A: Ene 2020 – Jun 2023 / Empleo B: Ene 2023 – Actualidad → SÍ HAY SOLAPAMIENTO (6 meses)\n\n" +
+            "2. EXPERIENCIA DECLARADA: ignorá frases como '+5 años', 'experiencia senior en'. " +
+            "NO compares texto contra suma cronológica. Si dice '+5 años' y la suma da 8, " +
+            "es CV desactualizado, NO inconsistencia.\n\n" +
+            "3. DURACIONES: si la diferencia entre duración declarada y calculada es menor a 3 meses, " +
+            "NO reportes. Ej: declara '5 años 2 meses', calculás '5 años 1 mes' → NO reportar.\n\n" +
+            "4. FECHA ACTUAL: NO menciones la fecha actual ni hagas comparaciones contra hoy. " +
+            "Solo inconsistencias INTERNAS al CV.\n\n" +
+            "5. TRABAJOS SIMULTÁNEOS: freelance + full-time, part-time, consultoría son válidos. " +
+            "Solo reportá si es físicamente imposible (ej: dos full-time presenciales en ciudades distintas).\n\n" +
+            "6. NO INVENTES: solo reportá lo que está EXPLÍCITO en el CV. Si dudás, NO reportes.\n\n" +
+            "==================================================================\n" +
+            "QUÉ SÍ REPORTAR:\n" +
+            "==================================================================\n" +
+            "- Gaps de más de 6 meses sin explicar\n" +
+            "- Saltos de seniority bruscos (junior → CTO)\n" +
+            "- Fechas internamente imposibles (termina antes de empezar)\n" +
+            "- Solapamientos VERIFICADOS de más de 2 meses entre roles incompatibles\n" +
+            "- Skills avanzadas que no aparecen en ningún empleo\n" +
+            "- Logros con números sospechosos sin contexto\n" +
+            "- Contradicciones internas reales\n\n" +
+            "==================================================================\n" +
+            "FORMATO JSON:\n" +
+            "==================================================================\n" +
+            "{\n" +
+            "  \"findings\": [\n" +
+            "    {\n" +
+            "      \"category\": \"...\",\n" +
+            "      \"description\": \"...\",\n" +
+            "      \"riskLevel\": \"ALTO|MEDIO|BAJO\",\n" +
+            "      \"suggestedQuestion\": \"...\"\n" +
+            "    }\n" +
+            "  ],\n" +
+            "  \"summary\": \"...\"\n" +
+            "}\n\n" +
+            "Sin markdown. Sin texto extra. Solo JSON.\n\n" +
             "<cv>\n" + cvText + "\n</cv>\n\n" +
-            "<tarea>\n" +
-            "Analiza el CV. Aplica el auto-check a cada hallazgo potencial. Verificá fechas DOS VECES " +
-            "antes de reportar solapamientos. Ante CUALQUIER duda, NO reportes.\n" +
-            "</tarea>";
+            "AUTO-CHECK antes de cada finding:\n" +
+            "- ¿Duración declarada vs calculada difiere menos de 3 meses? → NO REPORTAR\n" +
+            "- ¿Solapamiento de 2 meses o menos (incluyendo mismo mes de transición)? → NO REPORTAR\n" +
+            "- ¿Comparando '+X años' con suma cronológica? → NO REPORTAR\n" +
+            "- ¿Mencionando fecha actual? → NO REPORTAR\n" +
+            "- ¿Trabajos pueden ser simultáneos (uno freelance)? → NO REPORTAR\n\n" +
+            "Mejor no reportar nada que reportar falso positivo. " +
+            "Si pasa el check, incluí solo inconsistencia con datos EXACTOS del CV.";
     }
 
     private static string QuestionsPrompt(string jobDescription, string cvText)
