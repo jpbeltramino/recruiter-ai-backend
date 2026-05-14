@@ -91,9 +91,7 @@ public class ClaudeService
 
         return
             "<contexto>\n" +
-            $"Fecha actual: {currentDate} ({currentYear}). " +
-            $"Para calcular experiencia: desde la fecha de inicio del primer empleo hasta hoy. " +
-            $"Ej: si trabaja desde febrero 2021, tiene aprox {currentYear - 2021} años.\n" +
+            $"Fecha actual: {currentDate} ({currentYear}).\n" +
             "</contexto>\n\n" +
             "<instrucciones>\n" +
             "Sos experto en reclutamiento. Evalúa y rankea candidatos para el puesto.\n\n" +
@@ -104,18 +102,37 @@ public class ClaudeService
             "- weaknesses: 2 strings (debilidades reales respecto al puesto)\n" +
             "- verdict: \"AVANZAR\" | \"REVISAR\" | \"DESCARTAR\"\n\n" +
             "==================================================================\n" +
+            "CÓMO CALCULAR AÑOS DE EXPERIENCIA:\n" +
+            "==================================================================\n\n" +
+            "PASO 1: Identificá la fecha de inicio del PRIMER empleo del candidato (el más antiguo).\n" +
+            "PASO 2: Calculá la diferencia entre esa fecha y HOY.\n" +
+            "PASO 3: Ese número es la experiencia total.\n\n" +
+            "IMPORTANTE:\n" +
+            "- IGNORÁ frases como '+5 años', 'más de X años' del perfil profesional. " +
+            "Esas son frases que el candidato pudo NO actualizar.\n" +
+            "- NO uses esas frases para calcular. SIEMPRE calculá desde las fechas reales " +
+            "de los empleos listados.\n" +
+            "- Si un empleo dice 'Oct. 2017 – Ago. 2019', es UN empleo válido que cuenta para experiencia.\n" +
+            "- Si el primer empleo arrancó en 2017, el candidato tiene aprox " +
+            $"{currentYear - 2017} años de experiencia, NO 5.\n\n" +
+            "EJEMPLO:\n" +
+            "Si el CV lista:\n" +
+            "  - Empleo A: Oct 2017 – Ago 2019\n" +
+            "  - Empleo B: Ago 2019 – Actualidad\n" +
+            "Y el perfil dice '+5 años de experiencia'...\n" +
+            $"  → IGNORAR el '+5 años', calcular desde Oct 2017 → ~{currentYear - 2017} años de experiencia total.\n\n" +
+            "==================================================================\n" +
             "CÓMO ASIGNAR EL SCORE:\n" +
             "==================================================================\n\n" +
-            "Identificá los REQUISITOS EXCLUYENTES del puesto (años de experiencia, " +
-            "tecnologías específicas, certificaciones, idiomas).\n\n" +
-            "REGLA CLAVE: el score debe REFLEJAR el grado de cumplimiento de los requisitos.\n\n" +
-            "- Cumple todos los requisitos excluyentes Y tiene experiencia adicional valiosa → 9-10\n" +
-            "- Cumple todos los requisitos excluyentes ajustadamente → 7-8\n" +
-            "- Cumple la mayoría pero le falta algo significativo (ej: pide 8 años y tiene 5) → 5-6\n" +
-            "- Le faltan varios requisitos excluyentes → 3-4\n" +
-            "- No cumple los requisitos básicos → 1-2\n\n" +
-            "IMPORTANTE: si un candidato no llega a los años de experiencia solicitados, " +
-            "el score NO puede ser 7 o más. Esa es una brecha significativa.\n\n" +
+            "Identificá los REQUISITOS EXCLUYENTES del puesto (años, tecnologías, certificaciones).\n\n" +
+            "REGLA CLAVE: el score refleja el cumplimiento de los requisitos.\n\n" +
+            "- Cumple todos los requisitos Y tiene experiencia adicional valiosa → 9-10\n" +
+            "- Cumple todos los requisitos ajustadamente → 7-8\n" +
+            "- Cumple la mayoría pero le falta algo significativo (ej: pide 8, tiene 5) → 5-6\n" +
+            "- Le faltan varios requisitos → 3-4\n" +
+            "- No cumple los básicos → 1-2\n\n" +
+            "Si no llega a los años de experiencia solicitados, el score NO puede ser 7+. " +
+            "Esa es una brecha significativa.\n\n" +
             "Veredictos:\n" +
             "- AVANZAR: score >= 7\n" +
             "- REVISAR: score 5-6\n" +
@@ -125,8 +142,9 @@ public class ClaudeService
             "</instrucciones>\n\n" +
             "<puesto>\n" + jobDescription + "\n</puesto>\n\n" +
             "<candidatos>\n" + candidatesXml + "\n</candidatos>\n\n" +
-            "Evaluá cada candidato. Identificá requisitos excluyentes del puesto y " +
-            "asigná el score según cuánto los cumple. Si no llega a los años pedidos, score < 7.";
+            "Evaluá cada candidato. CALCULÁ los años de experiencia desde la fecha del PRIMER empleo " +
+            "hasta hoy, sin importar lo que diga el perfil profesional. " +
+            "Asigná el score según cuánto cumple los requisitos del puesto.";
     }
 
     private static string InconsistenciasPrompt(string cvText)
