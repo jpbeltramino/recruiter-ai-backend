@@ -86,104 +86,111 @@ public class ClaudeService
 
     private static string RankCvsPrompt(string jobDescription, string candidatesXml)
     {
-        var currentDate = DateTime.UtcNow.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-AR"));
         var currentYear = DateTime.UtcNow.Year;
+        var currentMonth = DateTime.UtcNow.ToString("MMMM", new System.Globalization.CultureInfo("es-AR"));
 
         return
-            "<contexto>\n" +
-            $"Fecha actual: {currentDate} ({currentYear}).\n" +
-            "</contexto>\n\n" +
-            "<instrucciones>\n" +
-            "Sos experto en reclutamiento. Evalúa y rankea candidatos para el puesto.\n\n" +
-            "Devolvé un JSON por candidato con:\n" +
-            "- name: string\n" +
-            "- score: entero 1-10\n" +
-            "- strengths: 3 strings (puntos fuertes concretos y relevantes al puesto)\n" +
-            "- weaknesses: 2 strings (debilidades reales respecto al puesto)\n" +
-            "- verdict: \"AVANZAR\" | \"REVISAR\" | \"DESCARTAR\"\n\n" +
+            $"Fecha actual: {currentMonth} {currentYear}.\n\n" +
+            "Sos experto en reclutamiento. Evaluá candidatos para el puesto.\n\n" +
             "==================================================================\n" +
-            "CÓMO CALCULAR AÑOS DE EXPERIENCIA:\n" +
+            "CÓMO CALCULAR AÑOS DE EXPERIENCIA — DOS NÚMEROS DISTINTOS:\n" +
             "==================================================================\n\n" +
-            "PASO 1: Identificá la fecha de inicio del PRIMER empleo del candidato (el más antiguo).\n" +
-            "PASO 2: Calculá la diferencia entre esa fecha y HOY.\n" +
-            "PASO 3: Ese número es la experiencia total.\n\n" +
-            "IMPORTANTE:\n" +
-            "- IGNORÁ frases como '+5 años', 'más de X años' del perfil profesional. " +
-            "Esas son frases que el candidato pudo NO actualizar.\n" +
-            "- NO uses esas frases para calcular. SIEMPRE calculá desde las fechas reales " +
-            "de los empleos listados.\n" +
-            "- Si un empleo dice 'Oct. 2017 – Ago. 2019', es UN empleo válido que cuenta para experiencia.\n" +
-            "- Si el primer empleo arrancó en 2017, el candidato tiene aprox " +
-            $"{currentYear - 2017} años de experiencia, NO 5.\n\n" +
-            "EJEMPLO:\n" +
-            "Si el CV lista:\n" +
-            "  - Empleo A: Oct 2017 – Ago 2019\n" +
-            "  - Empleo B: Ago 2019 – Actualidad\n" +
-            "Y el perfil dice '+5 años de experiencia'...\n" +
-            $"  → IGNORAR el '+5 años', calcular desde Oct 2017 → ~{currentYear - 2017} años de experiencia total.\n\n" +
+            "Para cada candidato, calculá DOS valores:\n\n" +
+            "1. EXPERIENCIA TOTAL: desde la fecha del primer empleo hasta hoy.\n" +
+            $"   Ej: primer empleo en Oct 2017 → {currentYear - 2017} años de experiencia total.\n\n" +
+            "2. EXPERIENCIA RELEVANTE: solo los empleos que aplican al puesto buscado.\n" +
+            "   Identificá qué skills/roles pide el puesto y contá SOLO los empleos donde el " +
+            "candidato trabajó en esos skills o roles directamente relacionados.\n" +
+            "   Trabajos en áreas completamente distintas al puesto NO cuentan como experiencia " +
+            "relevante.\n\n" +
+            "==================================================================\n" +
+            "QUÉ NÚMERO USAR PARA EVALUAR:\n" +
+            "==================================================================\n\n" +
+            "El score se basa en la EXPERIENCIA RELEVANTE, no en la total.\n\n" +
+            "Ejemplos generales:\n" +
+            "- Puesto pide 8 años de [skill X], candidato tiene 8 años de [skill X] → cumple\n" +
+            "- Puesto pide 8 años de [skill X], candidato tiene 5 años de [skill X] + 10 años en " +
+            "otro rol no relacionado → NO cumple (5 años relevantes, no 15)\n" +
+            "- Puesto pide 5 años de [skill X], candidato tiene 8 años de [skill Y] → NO cumple " +
+            "(skills distintos, no son intercambiables)\n" +
+            "- Puesto pide [skill X], candidato tiene experiencia en [skill X] desde hace 4 años " +
+            "trabajando en paralelo con otros roles → cuentan los 4 años de [skill X], independiente " +
+            "de la duración de los otros roles.\n\n" +
+            "IGNORÁ totalmente:\n" +
+            "- Frases como '+5 años' o 'más de X años' del perfil profesional " +
+            "(suelen ser textos no actualizados).\n" +
+            "- Trabajos simultáneos: NO restan experiencia. Si dos empleos relevantes corren " +
+            "en paralelo, cuentan como un solo período (no se suman, pero tampoco se restan).\n\n" +
             "==================================================================\n" +
             "CÓMO ASIGNAR EL SCORE:\n" +
             "==================================================================\n\n" +
-            "Identificá los REQUISITOS EXCLUYENTES del puesto (años, tecnologías, certificaciones).\n\n" +
-            "REGLA CLAVE: el score refleja el cumplimiento de los requisitos.\n\n" +
-            "- Cumple todos los requisitos Y tiene experiencia adicional valiosa → 9-10\n" +
-            "- Cumple todos los requisitos ajustadamente → 7-8\n" +
-            "- Cumple la mayoría pero le falta algo significativo (ej: pide 8, tiene 5) → 5-6\n" +
-            "- Le faltan varios requisitos → 3-4\n" +
-            "- No cumple los básicos → 1-2\n\n" +
-            "Si no llega a los años de experiencia solicitados, el score NO puede ser 7+. " +
-            "Esa es una brecha significativa.\n\n" +
+            "Comparás EXPERIENCIA RELEVANTE contra requisitos del puesto.\n\n" +
+            "Score 9-10: cumple todos los requisitos y excede en algo importante\n" +
+            "Score 7-8: cumple todos los requisitos ajustadamente\n" +
+            "Score 5-6: le falta algo importante (ej: pide 8 años relevantes, tiene 5)\n" +
+            "Score 3-4: le faltan varios requisitos\n" +
+            "Score 1-2: no cumple los básicos\n\n" +
+            "Si la experiencia RELEVANTE no llega a los años solicitados → score < 7 (sin excepciones).\n\n" +
             "Veredictos:\n" +
             "- AVANZAR: score >= 7\n" +
             "- REVISAR: score 5-6\n" +
             "- DESCARTAR: score <= 4\n\n" +
-            "Responde SOLO con JSON válido, sin markdown:\n" +
-            "{\"rankings\": [...]}\n" +
-            "</instrucciones>\n\n" +
+            "==================================================================\n" +
+            "FORMATO JSON:\n" +
+            "==================================================================\n\n" +
+            "Por candidato:\n" +
+            "- name: string\n" +
+            "- score: entero 1-10\n" +
+            "- strengths: 3 strings concretos (que reflejen experiencia RELEVANTE al puesto)\n" +
+            "- weaknesses: 2 strings concretos (brechas reales respecto al puesto)\n" +
+            "- verdict: AVANZAR | REVISAR | DESCARTAR\n\n" +
+            "Respondé SOLO con: {\"rankings\": [...]}\n\n" +
             "<puesto>\n" + jobDescription + "\n</puesto>\n\n" +
-            "<candidatos>\n" + candidatesXml + "\n</candidatos>\n\n" +
-            "Evaluá cada candidato. CALCULÁ los años de experiencia desde la fecha del PRIMER empleo " +
-            "hasta hoy, sin importar lo que diga el perfil profesional. " +
-            "Asigná el score según cuánto cumple los requisitos del puesto.";
+            "<candidatos>\n" + candidatesXml + "\n</candidatos>";
     }
 
     private static string InconsistenciasPrompt(string cvText)
     {
         return
-            "Sos experto en verificación de CVs. Detectá inconsistencias REALES y RELEVANTES.\n\n" +
+            "Sos experto en verificación de CVs. Detectá inconsistencias REALES.\n\n" +
             "==================================================================\n" +
-            "REGLAS CRÍTICAS:\n" +
+            "PRINCIPIO RECTOR: si dudás, NO reportes.\n" +
             "==================================================================\n\n" +
-            "1. SOLAPAMIENTOS: solo reportá si el solapamiento entre dos empleos es de MÁS DE 2 MESES " +
-            "calendario completos. Verificá las fechas DOS VECES leyendo literal del CV.\n" +
-            "Ejemplos:\n" +
-            "  • Empleo A: Ago 2019 – Oct 2019 / Empleo B: Oct 2019 – Dic 2024 → NO HAY SOLAPAMIENTO (transición)\n" +
-            "  • Empleo A: Mar 2020 – Dic 2020 / Empleo B: Dic 2020 – Actualidad → NO HAY SOLAPAMIENTO (mismo mes de cierre/apertura)\n" +
-            "  • Empleo A: Ene 2020 – Dic 2022 / Empleo B: Ene 2023 – Actualidad → NO HAY SOLAPAMIENTO\n" +
-            "  • Empleo A: Ene 2020 – Jun 2023 / Empleo B: Ene 2023 – Actualidad → SÍ HAY SOLAPAMIENTO (6 meses)\n\n" +
-            "2. EXPERIENCIA DECLARADA: ignorá frases como '+5 años', 'experiencia senior en'. " +
-            "NO compares texto contra suma cronológica. Si dice '+5 años' y la suma da 8, " +
-            "es CV desactualizado, NO inconsistencia.\n\n" +
-            "3. DURACIONES: si la diferencia entre duración declarada y calculada es menor a 3 meses, " +
-            "NO reportes. Ej: declara '5 años 2 meses', calculás '5 años 1 mes' → NO reportar.\n\n" +
-            "4. FECHA ACTUAL: NO menciones la fecha actual ni hagas comparaciones contra hoy. " +
-            "Solo inconsistencias INTERNAS al CV.\n\n" +
-            "5. TRABAJOS SIMULTÁNEOS: freelance + full-time, part-time, consultoría son válidos. " +
-            "Solo reportá si es físicamente imposible (ej: dos full-time presenciales en ciudades distintas).\n\n" +
-            "6. NO INVENTES: solo reportá lo que está EXPLÍCITO en el CV. Si dudás, NO reportes.\n\n" +
+            "Es mucho peor reportar un falso positivo que dejar pasar algo dudoso. " +
+            "Los recruiters confían en este sistema. Reportá SOLO si estás 100% seguro.\n\n" +
+            "==================================================================\n" +
+            "QUÉ NO REPORTAR (lo más importante):\n" +
+            "==================================================================\n\n" +
+            "1. Trabajos simultáneos con tipos compatibles (freelance + full-time, " +
+            "part-time, consultoría). NO los reportes — son comunes y válidos.\n\n" +
+            "2. Solapamientos de fechas de 2 meses o menos. NO son solapamientos, " +
+            "son transiciones normales. Mismo mes de cierre/apertura = transición, no solape.\n\n" +
+            "3. Diferencias menores a 3 meses entre duración declarada y calculada. Ignorar.\n\n" +
+            "4. Frases del perfil tipo '+5 años de experiencia'. NO las compares con la suma " +
+            "cronológica. Es CV desactualizado, no inconsistencia.\n\n" +
+            "5. Cálculos basados en la fecha actual. Solo reportá inconsistencias INTERNAS al CV.\n\n" +
+            "6. Cualquier cosa que no esté EXPLÍCITA en el CV. No inventes ni infieras.\n\n" +
             "==================================================================\n" +
             "QUÉ SÍ REPORTAR:\n" +
-            "==================================================================\n" +
-            "- Gaps de más de 6 meses sin explicar\n" +
-            "- Saltos de seniority bruscos (junior → CTO)\n" +
-            "- Fechas internamente imposibles (termina antes de empezar)\n" +
-            "- Solapamientos VERIFICADOS de más de 2 meses entre roles incompatibles\n" +
-            "- Skills avanzadas que no aparecen en ningún empleo\n" +
+            "==================================================================\n\n" +
+            "- Gaps de más de 6 meses sin empleo y sin explicación\n" +
+            "- Saltos de seniority injustificados (junior → CTO en 1 año)\n" +
+            "- Fechas internamente imposibles (un empleo termina antes de empezar)\n" +
+            "- Solapamientos VERIFICADOS de más de 2 meses entre roles físicamente incompatibles " +
+            "(ej: dos full-time presenciales en ciudades distintas)\n" +
+            "- Skills muy avanzadas que no aparecen en ningún empleo\n" +
             "- Logros con números sospechosos sin contexto\n" +
-            "- Contradicciones internas reales\n\n" +
+            "- Contradicciones internas reales (un dato del CV contradice otro)\n\n" +
+            "==================================================================\n" +
+            "VALIDACIÓN OBLIGATORIA POR CADA FINDING:\n" +
+            "==================================================================\n\n" +
+            "Antes de incluir un finding, respondé estas 3 preguntas mentalmente:\n\n" +
+            "1. ¿La descripción se contradice consigo misma en algún punto? → si SÍ, NO REPORTAR\n" +
+            "2. ¿Puedo apuntar a dos textos exactos del CV que se contradicen? → si NO, NO REPORTAR\n" +
+            "3. ¿Mi razonamiento aplica una regla del bloque 'QUÉ NO REPORTAR'? → si SÍ, NO REPORTAR\n\n" +
             "==================================================================\n" +
             "FORMATO JSON:\n" +
-            "==================================================================\n" +
+            "==================================================================\n\n" +
             "{\n" +
             "  \"findings\": [\n" +
             "    {\n" +
@@ -195,18 +202,9 @@ public class ClaudeService
             "  ],\n" +
             "  \"summary\": \"...\"\n" +
             "}\n\n" +
-            "Sin markdown. Sin texto extra. Solo JSON.\n\n" +
-            "<cv>\n" + cvText + "\n</cv>\n\n" +
-            "AUTO-CHECK antes de cada finding:\n" +
-            "- ¿Duración declarada vs calculada difiere menos de 3 meses? → NO REPORTAR\n" +
-            "- ¿Solapamiento de 2 meses o menos (incluyendo mismo mes de transición)? → NO REPORTAR\n" +
-            "- ¿Comparando '+X años' con suma cronológica? → NO REPORTAR\n" +
-            "- ¿Mencionando fecha actual? → NO REPORTAR\n" +
-            "- ¿Trabajos pueden ser simultáneos (uno freelance)? → NO REPORTAR\n\n" +
-            "Mejor no reportar nada que reportar falso positivo. " +
-            "Si pasa el check, incluí solo inconsistencia con datos EXACTOS del CV.";
+            "Sin markdown. Solo JSON. Si no hay nada relevante, findings: [] y summary positivo.\n\n" +
+            "<cv>\n" + cvText + "\n</cv>";
     }
-
     private static string QuestionsPrompt(string jobDescription, string cvText)
     {
         return
