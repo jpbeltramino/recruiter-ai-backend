@@ -165,11 +165,15 @@ public class ClaudeService
             "part-time, consultoría). NO los reportes — son comunes y válidos.\n\n" +
             "2. Solapamientos de fechas de 2 meses o menos. NO son solapamientos, " +
             "son transiciones normales. Mismo mes de cierre/apertura = transición, no solape.\n\n" +
-            "3. Diferencias menores a 3 meses entre duración declarada y calculada. Ignorar.\n\n" +
+            "3. Diferencias menores a 3 meses entre duración declarada y calculada. " +
+            "Ignorar SIEMPRE, sin excepciones. NO trates de combinarla con otra razón para " +
+            "reportarla igual — si la única o principal observación es esta diferencia, NO REPORTAR.\n\n" +
             "4. Frases del perfil tipo '+5 años de experiencia'. NO las compares con la suma " +
             "cronológica. Es CV desactualizado, no inconsistencia.\n\n" +
             "5. Cálculos basados en la fecha actual. Solo reportá inconsistencias INTERNAS al CV.\n\n" +
-            "6. Cualquier cosa que no esté EXPLÍCITA en el CV. No inventes ni infieras.\n\n" +
+            "6. Fechas que parecen 'futuras' por confusión con la fecha del documento o " +
+            "metadatos del archivo. NO uses la fecha del documento/archivo como referencia.\n\n" +
+            "7. Cualquier cosa que no esté EXPLÍCITA en el CV. No inventes ni infieras.\n\n" +
             "==================================================================\n" +
             "QUÉ SÍ REPORTAR:\n" +
             "==================================================================\n\n" +
@@ -184,10 +188,12 @@ public class ClaudeService
             "==================================================================\n" +
             "VALIDACIÓN OBLIGATORIA POR CADA FINDING:\n" +
             "==================================================================\n\n" +
-            "Antes de incluir un finding, respondé estas 3 preguntas mentalmente:\n\n" +
+            "Antes de incluir un finding, respondé estas 4 preguntas mentalmente:\n\n" +
             "1. ¿La descripción se contradice consigo misma en algún punto? → si SÍ, NO REPORTAR\n" +
             "2. ¿Puedo apuntar a dos textos exactos del CV que se contradicen? → si NO, NO REPORTAR\n" +
-            "3. ¿Mi razonamiento aplica una regla del bloque 'QUÉ NO REPORTAR'? → si SÍ, NO REPORTAR\n\n" +
+            "3. ¿Mi razonamiento aplica una regla del bloque 'QUÉ NO REPORTAR'? → si SÍ, NO REPORTAR\n" +
+            "4. ¿Estoy reportando una diferencia menor a 3 meses combinada con otra razón " +
+            "secundaria? → si SÍ, NO REPORTAR. La regla 3 es absoluta.\n\n" +
             "==================================================================\n" +
             "FORMATO JSON:\n" +
             "==================================================================\n\n" +
