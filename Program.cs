@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using RecruiterAI.Data;
 using RecruiterAI.Services;
 using Serilog;
 using Sentry;
@@ -35,6 +37,17 @@ builder.Services.AddSingleton<CvParserService>();
 builder.Services.AddSingleton<RateLimitService>();
 builder.Services.AddSingleton<FileValidationService>();
 builder.Services.AddSingleton<JobService>();
+
+// Persistencia: PostgreSQL (schema v2 — candidates, positions, pipeline, CRM).
+// El schema se aplica corriendo Database/schema.sql directamente (ver README);
+// todavía no se usan migraciones de EF Core.
+builder.Services.AddDbContext<RecruiterAIDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("Default")
+        ?? throw new InvalidOperationException(
+            "Falta ConnectionStrings:Default en appsettings.json.");
+    options.UseNpgsql(connectionString);
+});
 
 // CORS — allow all origins for development
 builder.Services.AddCors(options =>
